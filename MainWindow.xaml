@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="FaceitUltimate.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:FaceitUltimate"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    Title="Faceit Ultimate">
+
+    <Grid Background="#1f1f1f">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- WebView2 Control -->
+        <controls:WebView2
+            x:Name="WebView"
+            Grid.Row="0"
+            DefaultBackgroundColor="#1f1f1f"/>
+
+        <!-- Status Bar -->
+        <controls:InfoBar
+            x:Name="StatusBar"
+            Grid.Row="1"
+            Title="Status"
+            Message="Initializing..."
+            IsOpen="True"
+            IsClosable="False"
+            Severity="Informational"
+            Background="#2d2d2d"
+            Foreground="White"/>
+    </Grid>
+</Window>
