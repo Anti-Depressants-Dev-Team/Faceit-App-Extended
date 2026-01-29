@@ -22,11 +22,22 @@ packages/
 
 # Windows App SDK / WebView2 profile data
 FaceitProfile/
-extensions/
+# extensions/  <-- Commented out to track extensions in git
+# But ignore temporary extension build artifacts if any
+extensions/**/node_modules/
+extensions/**/dist/
+
+# Installer output
+Installer/
+FaceitExtended_Setup.exe
 
 # Build output
 *.log
+extension_errors.log
 build_output.txt
+manifest.txt
+sxs.etl
+sxs.txt
 
 # OS files
 Thumbs.db

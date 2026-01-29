@@ -4,7 +4,7 @@ using Microsoft.Windows.AppLifecycle;
 using Microsoft.Windows.ApplicationModel.DynamicDependency;
 using System.Runtime.InteropServices;
 
-namespace FaceitUltimate;
+namespace FaceitExtended;
 
 /// <summary>
 /// Program entry point for unpackaged WinUI 3 app
@@ -33,7 +33,7 @@ public static class Program
                 $"Windows App SDK initialization failed.\n\nError: {ex.Message}\n\n" +
                 "Please install the Windows App SDK runtime from:\n" +
                 "https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads",
-                "Faceit Ultimate - Startup Error",
+                "FACEIT Extended - Startup Error",
                 MB_OK | MB_ICONERROR);
             return -1;
         }
@@ -72,7 +72,7 @@ public static class Program
         
         try
         {
-            AppInstance keyInstance = AppInstance.FindOrRegisterForKey("FaceitUltimate");
+            AppInstance keyInstance = AppInstance.FindOrRegisterForKey("FaceitExtended");
             
             if (keyInstance.IsCurrent)
             {

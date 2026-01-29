@@ -2,25 +2,17 @@ using System.Diagnostics;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 using WinRT.Interop;
 
-namespace FaceitUltimate;
+namespace FaceitExtended;
 
 /// <summary>
 /// Main window containing the WebView2 browser for Faceit
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    // Extension folder names to create
-    private static readonly string[] ExtensionFolders = 
-    {
-        "faceit-repeek",
-        "faceit-predictor", 
-        "faceit-forecast",
-        "ublock-origin"
-    };
-
     // Latest Chrome UA string to spoof WebView2
     private const string ChromeUserAgent = 
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -32,8 +24,8 @@ public sealed partial class MainWindow : Window
         // Configure window appearance
         ConfigureWindow();
         
-        // Setup extension folders and initialize WebView
-        SetupExtensionFoldersAndInitializeWebView();
+        // Validate extensions and initialize WebView
+        ValidateAndInitializeAsync();
     }
 
     /// <summary>
@@ -41,9 +33,10 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private void ConfigureWindow()
     {
-        // Set window title
-        Title = "Faceit Ultimate";
-        
+        // Custom title bar
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+
         // Get AppWindow for customization
         var hwnd = WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
@@ -51,19 +44,14 @@ public sealed partial class MainWindow : Window
         
         if (AppWindowTitleBar.IsCustomizationSupported())
         {
-            // Enable custom title bar with dark theme colors
-            appWindow.TitleBar.ExtendsContentIntoTitleBar = false;
-            appWindow.TitleBar.BackgroundColor = Windows.UI.Color.FromArgb(255, 31, 31, 31);
-            appWindow.TitleBar.ForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
-            appWindow.TitleBar.ButtonBackgroundColor = Windows.UI.Color.FromArgb(255, 31, 31, 31);
+            // Set caption button colors to match dark theme
+            appWindow.TitleBar.ButtonBackgroundColor = Windows.UI.Color.FromArgb(0, 0, 0, 0); // Transparent
             appWindow.TitleBar.ButtonForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
             appWindow.TitleBar.ButtonHoverBackgroundColor = Windows.UI.Color.FromArgb(255, 60, 60, 60);
             appWindow.TitleBar.ButtonHoverForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
             appWindow.TitleBar.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(255, 80, 80, 80);
             appWindow.TitleBar.ButtonPressedForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
-            appWindow.TitleBar.InactiveBackgroundColor = Windows.UI.Color.FromArgb(255, 31, 31, 31);
-            appWindow.TitleBar.InactiveForegroundColor = Windows.UI.Color.FromArgb(255, 150, 150, 150);
-            appWindow.TitleBar.ButtonInactiveBackgroundColor = Windows.UI.Color.FromArgb(255, 31, 31, 31);
+            appWindow.TitleBar.ButtonInactiveBackgroundColor = Windows.UI.Color.FromArgb(0, 0, 0, 0);
             appWindow.TitleBar.ButtonInactiveForegroundColor = Windows.UI.Color.FromArgb(255, 150, 150, 150);
         }
 
@@ -71,56 +59,42 @@ public sealed partial class MainWindow : Window
         appWindow.Resize(new Windows.Graphics.SizeInt32(1400, 900));
     }
 
+    private void BackButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (WebView.CanGoBack) WebView.GoBack();
+    }
+
+    private void ForwardButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (WebView.CanGoForward) WebView.GoForward();
+    }
+
+    private void RefreshButton_Click(object sender, RoutedEventArgs e)
+    {
+        WebView.Reload();
+    }
+
     /// <summary>
-    /// Create extension folder structure and initialize WebView2
+    /// Validate extensions folder exists and initialize WebView2
     /// </summary>
-    private async void SetupExtensionFoldersAndInitializeWebView()
+    private async void ValidateAndInitializeAsync()
     {
         try
         {
-            // Get app base directory
+            // Get extensions folder path
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
             var extensionsRoot = Path.Combine(baseDir, "extensions");
             
-            // Create extensions folder if missing
+            // Fatal check: extensions folder must exist (bundled at compile-time)
             if (!Directory.Exists(extensionsRoot))
             {
-                Directory.CreateDirectory(extensionsRoot);
-                UpdateStatus("Created extensions folder", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational);
-            }
-
-            // Create each extension subfolder
-            bool allHaveManifest = true;
-            List<string> emptyFolders = new();
-
-            foreach (var folderName in ExtensionFolders)
-            {
-                var folderPath = Path.Combine(extensionsRoot, folderName);
-                
-                if (!Directory.Exists(folderPath))
-                {
-                    Directory.CreateDirectory(folderPath);
-                }
-
-                // Check if manifest.json exists
-                var manifestPath = Path.Combine(folderPath, "manifest.json");
-                if (!File.Exists(manifestPath))
-                {
-                    allHaveManifest = false;
-                    emptyFolders.Add(folderName);
-                }
-            }
-
-            // Update status based on validation
-            if (!allHaveManifest)
-            {
-                UpdateStatus(
-                    $"⚠️ Folders created. Please drop extension files into /extensions/ folder and restart. Missing: {string.Join(", ", emptyFolders)}", 
-                    Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning);
-            }
-            else
-            {
-                UpdateStatus("Extension folders validated", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success);
+                await ShowFatalErrorAsync(
+                    "Build Error: Extensions Missing",
+                    "The extensions folder was not found in the application directory.\n\n" +
+                    "This is a build configuration error. The extensions folder should be bundled " +
+                    "at compile-time via the project file.\n\n" +
+                    $"Expected path: {extensionsRoot}");
+                return;
             }
 
             // Initialize WebView2
@@ -128,8 +102,27 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            UpdateStatus($"Error during initialization: {ex.Message}", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Error);
+            Debug.WriteLine($"Error during initialization: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Show a fatal error dialog and prevent further initialization
+    /// </summary>
+    private async Task ShowFatalErrorAsync(string title, string message)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = message,
+            CloseButtonText = "Close Application",
+            XamlRoot = this.Content.XamlRoot
+        };
+
+        await dialog.ShowAsync();
+        
+        // Close the application
+        this.Close();
     }
 
     /// <summary>
@@ -139,11 +132,26 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            UpdateStatus("Initializing WebView2...", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational);
+            // Create custom environment with extensions enabled
+            // Store profile in %LOCALAPPDATA% to avoid write permission issues in Program Files
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var userDataFolder = Path.Combine(appData, "FaceitExtended", "Profile");
+            
+            // Ensure directory exists
+            Directory.CreateDirectory(userDataFolder);
 
-            // Initialize WebView2 with default environment
-            // WinUI 3's WebView2 uses its own environment management
-            await WebView.EnsureCoreWebView2Async();
+            var options = new CoreWebView2EnvironmentOptions
+            {
+                AdditionalBrowserArguments = "--enable-features=msExtensions",
+                AreBrowserExtensionsEnabled = true  // Required for AddBrowserExtensionAsync to work
+            };
+            var environment = await CoreWebView2Environment.CreateWithOptionsAsync(
+                browserExecutableFolder: null,
+                userDataFolder: userDataFolder,
+                options: options);
+
+            // Initialize WebView2 with the custom environment
+            await WebView.EnsureCoreWebView2Async(environment);
 
             // Configure settings
             var settings = WebView.CoreWebView2.Settings;
@@ -156,29 +164,27 @@ public sealed partial class MainWindow : Window
 
             // Handle new window requests (external links)
             WebView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
+            
+            // Update navigation buttons history state
+            WebView.CoreWebView2.HistoryChanged += (s, e) =>
+            {
+                 BackButton.IsEnabled = WebView.CanGoBack;
+                 ForwardButton.IsEnabled = WebView.CanGoForward;
+            };
+            
+            // Initial state
+            BackButton.IsEnabled = false;
+            ForwardButton.IsEnabled = false;
 
             // Load browser extensions
             await LoadExtensionsAsync(extensionsRoot);
 
             // Navigate to Faceit
-            UpdateStatus("Loading Faceit...", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational);
             WebView.CoreWebView2.Navigate("https://www.faceit.com/en");
-
-            // Hide status bar after successful load
-            WebView.CoreWebView2.NavigationCompleted += (s, e) =>
-            {
-                if (e.IsSuccess)
-                {
-                    DispatcherQueue.TryEnqueue(() =>
-                    {
-                        UpdateStatus("Ready", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success);
-                    });
-                }
-            };
         }
         catch (Exception ex)
         {
-            UpdateStatus($"WebView2 initialization failed: {ex.Message}", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Error);
+            Debug.WriteLine($"WebView2 initialization failed: {ex.Message}");
         }
     }
 
@@ -187,39 +193,24 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private async Task LoadExtensionsAsync(string extensionsRoot)
     {
-        int loadedCount = 0;
-        int failedCount = 0;
+        // Get all subdirectories in extensions folder
+        var extensionDirs = Directory.GetDirectories(extensionsRoot);
 
-        foreach (var folderName in ExtensionFolders)
+        foreach (var folderPath in extensionDirs)
         {
-            var folderPath = Path.Combine(extensionsRoot, folderName);
             var manifestPath = Path.Combine(folderPath, "manifest.json");
-
             if (File.Exists(manifestPath))
             {
                 try
                 {
-                    UpdateStatus($"Loading extension: {folderName}...", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational);
-                    
                     await WebView.CoreWebView2.Profile.AddBrowserExtensionAsync(folderPath);
-                    loadedCount++;
-                    
-                    UpdateStatus($"✓ Loaded: {folderName}", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success);
                 }
                 catch (Exception ex)
                 {
-                    failedCount++;
-                    UpdateStatus($"✗ Failed to load {folderName}: {ex.Message}", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Error);
+                    // Log failure silently to debug output
+                    Debug.WriteLine($"Failed to load extension {folderPath}: {ex.Message}");
                 }
             }
-        }
-
-        if (loadedCount > 0 || failedCount > 0)
-        {
-            var severity = failedCount > 0 
-                ? Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning 
-                : Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
-            UpdateStatus($"Extensions: {loadedCount} loaded, {failedCount} failed", severity);
         }
     }
 
@@ -244,19 +235,8 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            UpdateStatus($"Failed to open link: {ex.Message}", Microsoft.UI.Xaml.Controls.InfoBarSeverity.Error);
+            Debug.WriteLine($"Failed to open link: {ex.Message}");
         }
     }
-
-    /// <summary>
-    /// Update the status bar message and severity
-    /// </summary>
-    private void UpdateStatus(string message, Microsoft.UI.Xaml.Controls.InfoBarSeverity severity)
-    {
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            StatusBar.Message = message;
-            StatusBar.Severity = severity;
-        });
-    }
 }
+

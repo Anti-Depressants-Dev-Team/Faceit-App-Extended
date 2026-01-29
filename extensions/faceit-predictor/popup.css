@@ -1,0 +1,287 @@
+/**
+ * Popup styles for FACEIT CS2 Predictor extension
+ */
+
+:root {
+    --color-bg-900: #121212;
+    --color-bg-800: #1a1a1a;
+    --color-bg-700: #1f1f1f;
+    --color-bg-600: #2a2a2a;
+    --color-fg-300: #e0e0e0;
+    --color-fg-400: #f5f5f5;
+    --color-primary: #f8b363;
+    --color-primary-hover: #ffc97a;
+    --color-primary-dark: #e6a050;
+    --color-outline: #f8b363;
+    --color-success: #44DD81;
+    --color-error: #e4381e;
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --border-radius: 8px;
+    --border-radius-lg: 12px;
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, var(--color-bg-900) 0%, var(--color-bg-800) 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: var(--color-fg-300);
+    min-width: 400px;
+}
+
+.app {
+    width: 100%;
+    background-color: var(--color-bg-900);
+    color: var(--color-fg-300);
+}
+
+/* Header */
+header {
+    background: linear-gradient(135deg, rgba(248, 179, 99, 0.1) 0%, rgba(248, 179, 99, 0.05) 100%);
+    border-bottom: 1px solid var(--color-bg-700);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+}
+
+.container {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-lg);
+    gap: var(--spacing-md);
+}
+
+.logo {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    flex-shrink: 0;
+}
+
+.text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    flex: 1;
+}
+
+.title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-fg-400);
+    letter-spacing: -0.5px;
+}
+
+.version {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.version p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--color-fg-300);
+    opacity: 0.7;
+    font-weight: 500;
+}
+
+/* Sections */
+.section {
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--color-bg-700);
+    transition: background-color var(--transition);
+}
+
+.section:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.section:last-child {
+    border-bottom: 1px solid var(--color-bg-700);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    gap: var(--spacing-md);
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-fg-400);
+    flex: 1;
+}
+
+.section-body {
+    margin-top: var(--spacing-sm);
+}
+
+.section-body p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--color-fg-300);
+    opacity: 0.9;
+}
+
+/* Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-bg-600);
+    transition: var(--transition);
+    border-radius: 34px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: var(--transition);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input:checked + .slider {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    box-shadow: 0 0 0 3px rgba(248, 179, 99, 0.2);
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 0 3px rgba(248, 179, 99, 0.2);
+}
+
+.slider:hover {
+    background-color: var(--color-bg-700);
+}
+
+input:checked + .slider:hover {
+    background: linear-gradient(135deg, var(--color-primary-hover) 0%, var(--color-primary) 100%);
+}
+
+/* Donate Button */
+.donate-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
+    margin-top: var(--spacing-md);
+    background: linear-gradient(135deg, #ff7f50 0%, #ff6347 100%);
+    color: #fff;
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    font-weight: 600;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.donate-button:hover {
+    background: linear-gradient(135deg, #ff6347 0%, #ff4d2e 100%);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.donate-button:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+.donate-button span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.section {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.section:nth-child(1) { animation-delay: 0.05s; }
+.section:nth-child(2) { animation-delay: 0.1s; }
+.section:nth-child(3) { animation-delay: 0.15s; }
+.section:nth-child(4) { animation-delay: 0.2s; }
+.section:nth-child(5) { animation-delay: 0.25s; }
+
+/* Responsive */
+@media (max-width: 480px) {
+    .container {
+        padding: var(--spacing-md);
+    }
+    
+    .logo {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .title {
+        font-size: 18px;
+    }
+    
+    .section {
+        padding: var(--spacing-md);
+    }
+}

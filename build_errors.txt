@@ -1,0 +1,13 @@
+﻿  Determining projects to restore...
+  All projects are up-to-date for restore.
+C:\Users\razva\Documents\GitHub\Antidepresents\Faceit-App-Extended\MainWindow.xaml.cs(136,61): error CS1501: No overload for method 'CreateAsync' takes 3 arguments [C:\Users\razva\Documents\GitHub\Antidepresents\Faceit-App-Extended\FaceitExtended.csproj]
+C:\Users\razva\.nuget\packages\microsoft.windowsappsdk\1.6.250108002\buildTransitive\Microsoft.UI.Xaml.Markup.Compiler.interop.targets(841,9): error MSB3073: The command ""C:\Users\razva\.nuget\packages\microsoft.windowsappsdk\1.6.250108002\buildTransitive\..\tools\net6.0\..\net472\XamlCompiler.exe" "obj\Debug\net9.0-windows10.0.19041.0\\input.json" "obj\Debug\net9.0-windows10.0.19041.0\\output.json"" exited with code 1. [C:\Users\razva\Documents\GitHub\Antidepresents\Faceit-App-Extended\FaceitExtended.csproj]
+
+Build FAILED.
+
+C:\Users\razva\Documents\GitHub\Antidepresents\Faceit-App-Extended\MainWindow.xaml.cs(136,61): error CS1501: No overload for method 'CreateAsync' takes 3 arguments [C:\Users\razva\Documents\GitHub\Antidepresents\Faceit-App-Extended\FaceitExtended.csproj]
+C:\Users\razva\.nuget\packages\microsoft.windowsappsdk\1.6.250108002\buildTransitive\Microsoft.UI.Xaml.Markup.Compiler.interop.targets(841,9): error MSB3073: The command ""C:\Users\razva\.nuget\packages\microsoft.windowsappsdk\1.6.250108002\buildTransitive\..\tools\net6.0\..\net472\XamlCompiler.exe" "obj\Debug\net9.0-windows10.0.19041.0\\input.json" "obj\Debug\net9.0-windows10.0.19041.0\\output.json"" exited with code 1. [C:\Users\razva\Documents\GitHub\Antidepresents\Faceit-App-Extended\FaceitExtended.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:03.39

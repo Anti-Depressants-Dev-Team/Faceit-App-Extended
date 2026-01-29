@@ -1,0 +1,38 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "images/icon-128.png",
+         "16": "images/icon-16.png",
+         "32": "images/icon-32.png",
+         "48": "images/icon-48.png"
+      },
+      "default_popup": "popup.html"
+   },
+   "background": {
+      "service_worker": "scripts/background.bundle.js"
+   },
+   "content_scripts": [ {
+      "css": [ "scripts/content.css" ],
+      "js": [ "scripts/lib/lz-string.js", "scripts/content.bundle.js" ],
+      "matches": [ "https://www.faceit.com/*" ],
+      "run_at": "document_end"
+   } ],
+   "description": "Machine learning based match outcome predictor for CS2 matches on FACEIT",
+   "host_permissions": [ "*://*.faceit.com/*" ],
+   "icons": {
+      "128": "images/icon-128.png",
+      "16": "images/icon-16.png",
+      "32": "images/icon-32.png",
+      "48": "images/icon-48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1NlAn2aEtzQbjTkKEnHzppPL3OXZFSBEucZ48aDBML5wAoFMBXl3s7UJPFNmicFzkogYWGDNgo5etSPuVIqycVcKcvFuVboMiVR1oIk3Q0h1m1E6xQiH20gTG++BF1iUa0PDApQ6h7miUXWo8pJizdDKpM5gl/SMj1rXLKd0Or5Pcdev4yzye56N37MWm0c44yBP+0FIQTIzPEGi32LCzm3immJrvybqdl59ijg01EF/jLx4gYoCiBDtNJgxw8Qhq9JUDlXDeZeqIdOHewDn3U8+WqrJa4jiZc0vzizpH9BpFX5cNhM+aIYDgWFiziXT87VvxViv+cch888bzpuqtwIDAQAB",
+   "manifest_version": 3,
+   "name": "FACEIT CS2 Predictor",
+   "permissions": [ "webRequest", "storage" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.0.0.24",
+   "web_accessible_resources": [ {
+      "matches": [ "https://www.faceit.com/*" ],
+      "resources": [ "scripts/content.css" ]
+   } ]
+}

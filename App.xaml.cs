@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml;
 
-namespace FaceitUltimate;
+namespace FaceitExtended;
 
 /// <summary>
 /// Main application entry point for Faceit Ultimate

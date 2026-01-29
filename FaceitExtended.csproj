@@ -3,12 +3,13 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <RootNamespace>FaceitUltimate</RootNamespace>
+    <RootNamespace>FaceitExtended</RootNamespace>
+    <AssemblyName>FaceitExtended</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
+    <ApplicationIcon>faceit.ico</ApplicationIcon>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -19,7 +20,10 @@
     
     <!-- UNPACKAGED: Run as standard executable without MSIX -->
     <WindowsPackageType>None</WindowsPackageType>
-    <!-- Self-contained: bundle all Windows App SDK runtime DLLs -->
+  </PropertyGroup>
+
+  <!-- Self-contained mode only when publishing with a RuntimeIdentifier -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
   </PropertyGroup>
 
@@ -28,4 +32,15 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
   </ItemGroup>
+
+  <!-- Bundle extensions folder at compile-time -->
+  <ItemGroup>
+    <Content Include="extensions\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="faceit.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
+
