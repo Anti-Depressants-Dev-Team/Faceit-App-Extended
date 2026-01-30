@@ -30,12 +30,18 @@ SetupIconFile=faceit.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+; Ensure application is closed before install
+CloseApplications=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
+[InstallDelete]
+; Clean extensions folder before install to ensure no stale/empty directories
+Type: filesandordirs; Name: "{app}\extensions"
 
 [Files]
 ; The main executable
@@ -44,15 +50,20 @@ Source: "{#MyAppBuildPath}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignorevers
 ; Explicitly include the icon from project root
 Source: "faceit.ico"; DestDir: "{app}"; Flags: ignoreversion
 
-; Explicitly include the extensions folder from project root (ensures they are present)
+; 1. Copy dependencies from build path (might include old/empty extensions folder)
+Source: "{#MyAppBuildPath}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; 2. Explicitly overwrite extensions from source to guarantee they are fresh and correct
+; This runs AFTER the build path copy, ensuring these files win.
 Source: "extensions\*"; DestDir: "{app}\extensions"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; The rest of the publish directory (dependencies, runtimes)
-Source: "{#MyAppBuildPath}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Bundled Windows App SDK Installer
+Source: "WindowsAppRuntimeInstall.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\faceit.ico"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\faceit.ico"
 
 [Run]
+Filename: "{tmp}\WindowsAppRuntimeInstall.exe"; Parameters: "--quiet"; StatusMsg: "Installing Windows App SDK Runtime..."; Flags: waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

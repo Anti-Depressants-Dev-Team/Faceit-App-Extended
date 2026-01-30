@@ -25,7 +25,11 @@ public sealed partial class MainWindow : Window
         ConfigureWindow();
         
         // Validate extensions and initialize WebView
-        ValidateAndInitializeAsync();
+        // Defer until Loaded to ensure UI (XamlRoot) is ready for error dialogs
+        if (Content is FrameworkElement fe)
+        {
+            fe.Loaded += (s, e) => ValidateAndInitializeAsync();
+        }
     }
 
     /// <summary>
@@ -109,20 +113,52 @@ public sealed partial class MainWindow : Window
     /// <summary>
     /// Show a fatal error dialog and prevent further initialization
     /// </summary>
+    /// <summary>
+    /// Show a fatal error dialog and prevent further initialization
+    /// </summary>
     private async Task ShowFatalErrorAsync(string title, string message)
     {
+        await ShowMessageAsync(title, message, isFatal: true);
+    }
+
+    /// <summary>
+    /// Show a message dialog. If fatal, closes the app on dismiss.
+    /// </summary>
+    private async Task ShowMessageAsync(string title, string message, bool isFatal = false)
+    {
+        if (Content is not FrameworkElement fe || fe.XamlRoot == null)
+        {
+            // If XamlRoot is still null (shouldn't happen with Loaded hook), log to debug
+            Debug.WriteLine($"[CRITICAL] Cannot show dialog '{title}': XamlRoot is null. Message: {message}");
+            if (isFatal) this.Close();
+            return;
+        }
+
         var dialog = new ContentDialog
         {
             Title = title,
-            Content = message,
-            CloseButtonText = "Close Application",
-            XamlRoot = this.Content.XamlRoot
+            Content = new ScrollViewer 
+            { 
+                Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap },
+                MaxHeight = 500
+            },
+            CloseButtonText = isFatal ? "Close Application" : "OK",
+            XamlRoot = fe.XamlRoot
         };
 
-        await dialog.ShowAsync();
+        try 
+        {
+            await dialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+             Debug.WriteLine($"Failed to show dialog: {ex.Message}");
+        }
         
-        // Close the application
-        this.Close();
+        if (isFatal)
+        {
+            this.Close();
+        }
     }
 
     /// <summary>
@@ -191,26 +227,110 @@ public sealed partial class MainWindow : Window
     /// <summary>
     /// Load browser extensions from the extensions folder
     /// </summary>
-    private async Task LoadExtensionsAsync(string extensionsRoot)
+    /// <summary>
+    /// Load browser extensions from the extensions folder with diagnostics
+    /// </summary>
+    private async Task LoadExtensionsAsync(string originalRoot)
     {
-        // Get all subdirectories in extensions folder
-        var extensionDirs = Directory.GetDirectories(extensionsRoot);
+        var report = new System.Text.StringBuilder();
+        int successCount = 0;
+        int failureCount = 0;
+        
+        // Use LocalAppData to avoid Permission issues in Program Files
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var extensionsRoot = Path.Combine(appData, "FaceitExtended", "InstalledExtensions");
+        
+        report.AppendLine($"Source: {originalRoot}");
+        report.AppendLine($"Target: {extensionsRoot}");
 
-        foreach (var folderPath in extensionDirs)
+        try
         {
-            var manifestPath = Path.Combine(folderPath, "manifest.json");
-            if (File.Exists(manifestPath))
+            if (!Directory.Exists(originalRoot))
             {
-                try
+                 report.AppendLine("[WARN] Source extensions folder missing. Skipping copy.");
+            }
+            else
+            {
+                try 
                 {
-                    await WebView.CoreWebView2.Profile.AddBrowserExtensionAsync(folderPath);
+                    // Copy extensions to secure location (overwrite existing)
+                    CopyDirectory(originalRoot, extensionsRoot);
+                    report.AppendLine("[OK] Copied extensions to LocalAppData.");
                 }
                 catch (Exception ex)
                 {
-                    // Log failure silently to debug output
-                    Debug.WriteLine($"Failed to load extension {folderPath}: {ex.Message}");
+                    report.AppendLine($"[ERR] Failed to copy extensions: {ex.Message}");
+                    // Fallback to original path if copy fails
+                    extensionsRoot = originalRoot;
                 }
             }
+
+            // Get all subdirectories in the target extensions folder
+            // Create target if it doesn't exist (handle empty case)
+            if (!Directory.Exists(extensionsRoot)) Directory.CreateDirectory(extensionsRoot);
+            
+            var extensionDirs = Directory.GetDirectories(extensionsRoot);
+            report.AppendLine($"Found {extensionDirs.Length} subdirectories in target.");
+            
+            if (extensionDirs.Length == 0)
+            {
+                 // report.AppendLine("[WARN] No extension folders found."); // Silent warn
+            }
+
+            foreach (var folderPath in extensionDirs)
+            {
+                var dirName = Path.GetFileName(folderPath);
+                var manifestPath = Path.Combine(folderPath, "manifest.json");
+                
+                if (!File.Exists(manifestPath))
+                {
+                    // report.AppendLine($"[SKIP] '{dirName}': Valid manifest.json not found.");
+                    continue;
+                }
+
+                try
+                {
+                    await WebView.CoreWebView2.Profile.AddBrowserExtensionAsync(folderPath);
+                    successCount++;
+                    report.AppendLine($"[OK] Loaded '{dirName}'");
+                }
+                catch (Exception ex)
+                {
+                    failureCount++;
+                    report.AppendLine($"[ERR] Failed to load '{dirName}': {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            failureCount++;
+            report.AppendLine($"[CRITICAL] Error processing extensions: {ex.Message}");
+        }
+
+        // If specific failures occurred, show a warning dialog (non-fatal)
+        if (failureCount > 0)
+        {
+            await ShowMessageAsync("Extension Loading Issues", report.ToString(), isFatal: false);
+        }
+    }
+
+    /// <summary>
+    /// Recursively copy directory contents
+    /// </summary>
+    private void CopyDirectory(string sourceDir, string targetDir)
+    {
+        Directory.CreateDirectory(targetDir);
+
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var destFile = Path.Combine(targetDir, Path.GetFileName(file));
+            File.Copy(file, destFile, true);
+        }
+
+        foreach (var subDir in Directory.GetDirectories(sourceDir))
+        {
+            var destDir = Path.Combine(targetDir, Path.GetFileName(subDir));
+            CopyDirectory(subDir, destDir);
         }
     }
 
