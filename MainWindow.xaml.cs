@@ -107,6 +107,7 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             Debug.WriteLine($"Error during initialization: {ex.Message}");
+            await ShowFatalErrorAsync("Initialization Error", ex.ToString());
         }
     }
 
@@ -221,6 +222,7 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             Debug.WriteLine($"WebView2 initialization failed: {ex.Message}");
+            await ShowFatalErrorAsync("WebView2 Initialization Failed", ex.ToString());
         }
     }
 

@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Faceit Extended"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.0.3"
 #define MyAppPublisher "Faceit Extended Team"
 #define MyAppURL "https://www.faceit.com/"
 #define MyAppExeName "FaceitExtended.exe"

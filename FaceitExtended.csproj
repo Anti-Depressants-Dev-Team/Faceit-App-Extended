@@ -5,6 +5,7 @@
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>FaceitExtended</RootNamespace>
     <AssemblyName>FaceitExtended</AssemblyName>
+    <Version>1.0.3</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
@@ -35,7 +36,7 @@
 
   <!-- Bundle extensions folder at compile-time -->
   <ItemGroup>
-    <Content Include="extensions\**">
+    <Content Include="extensions\**" Exclude="extensions\**\.git\**;extensions\**\*src*\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="faceit.ico">
