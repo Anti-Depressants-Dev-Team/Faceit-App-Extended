@@ -48,16 +48,26 @@ public sealed partial class MainWindow : Window
         
         if (AppWindowTitleBar.IsCustomizationSupported())
         {
+            // Tall caption buttons so they match the 52px title bar
+            appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+
             // Set caption button colors to match dark theme
             appWindow.TitleBar.ButtonBackgroundColor = Windows.UI.Color.FromArgb(0, 0, 0, 0); // Transparent
-            appWindow.TitleBar.ButtonForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
-            appWindow.TitleBar.ButtonHoverBackgroundColor = Windows.UI.Color.FromArgb(255, 60, 60, 60);
+            appWindow.TitleBar.ButtonForegroundColor = Windows.UI.Color.FromArgb(255, 230, 230, 230);
+            appWindow.TitleBar.ButtonHoverBackgroundColor = Windows.UI.Color.FromArgb(255, 62, 62, 62);
             appWindow.TitleBar.ButtonHoverForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
-            appWindow.TitleBar.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(255, 80, 80, 80);
-            appWindow.TitleBar.ButtonPressedForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
+            appWindow.TitleBar.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(255, 35, 35, 35);
+            appWindow.TitleBar.ButtonPressedForegroundColor = Windows.UI.Color.FromArgb(255, 255, 85, 0);
             appWindow.TitleBar.ButtonInactiveBackgroundColor = Windows.UI.Color.FromArgb(0, 0, 0, 0);
-            appWindow.TitleBar.ButtonInactiveForegroundColor = Windows.UI.Color.FromArgb(255, 150, 150, 150);
+            appWindow.TitleBar.ButtonInactiveForegroundColor = Windows.UI.Color.FromArgb(255, 120, 120, 120);
         }
+
+        // Dim the title bar contents while the window is in the background
+        this.Activated += (s, e) =>
+        {
+            TitleBarContent.Opacity =
+                e.WindowActivationState == WindowActivationState.Deactivated ? 0.55 : 1.0;
+        };
 
         // Set a reasonable default window size
         appWindow.Resize(new Windows.Graphics.SizeInt32(1400, 900));

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:"
+    />
+    <title>FACEIT Extended</title>
+    <link rel="stylesheet" href="shell.css" />
+  </head>
+  <body>
+    <header class="titlebar" id="titlebar">
+      <nav class="nav">
+        <button class="key" id="back" type="button" title="Back (Alt+Left)" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14.5 6 9 12l5.5 6" />
+          </svg>
+        </button>
+        <button class="key" id="forward" type="button" title="Forward (Alt+Right)" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9.5 6l5.5 6-5.5 6" />
+          </svg>
+        </button>
+        <button class="key" id="reload" type="button" title="Reload (F5)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" />
+            <path d="M19.5 4.5v4.2h-4.2" />
+          </svg>
+        </button>
+      </nav>
+
+      <div class="drag-zone"></div>
+
+      <button class="update" id="update" type="button" hidden>Update</button>
+
+      <div class="progress" aria-hidden="true"></div>
+    </header>
+
+    <script src="shell.js"></script>
+  </body>
+</html>

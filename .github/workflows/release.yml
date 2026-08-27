@@ -1,0 +1,50 @@
+name: Release
+
+# Tag a commit to ship it:
+#   npm version patch --prefix electron
+#   git tag v1.0.4 && git push origin main --tags
+#
+# electron-builder uploads the installer plus latest.yml to a draft GitHub
+# release; publishing that release is what makes the app's auto-updater see it.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: electron
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: electron/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and publish installer
+        run: npx electron-builder --win nsis --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload installer as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: faceit-extended-windows
+          path: |
+            electron/dist/*.exe
+            electron/dist/latest.yml
+          if-no-files-found: error

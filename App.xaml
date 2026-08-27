@@ -9,11 +9,150 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
-            
+
             <!-- Dark Theme Colors -->
             <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1f1f1f"/>
             <SolidColorBrush x:Key="AppForegroundBrush" Color="#ffffff"/>
             <SolidColorBrush x:Key="AccentBrush" Color="#ff5500"/>
+
+            <!-- Title bar palette -->
+            <SolidColorBrush x:Key="TitleBarStrokeBrush" Color="#0D0D0D"/>
+            <SolidColorBrush x:Key="ChromeButtonBorderBrush" Color="#3A3A3A"/>
+            <SolidColorBrush x:Key="ChromeButtonForegroundBrush" Color="#E6E6E6"/>
+
+            <LinearGradientBrush x:Key="TitleBarBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Offset="0" Color="#2E2E2E"/>
+                <GradientStop Offset="1" Color="#1B1B1B"/>
+            </LinearGradientBrush>
+
+            <LinearGradientBrush x:Key="TitleBarAccentLineBrush" StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Offset="0" Color="#FF5500"/>
+                <GradientStop Offset="0.45" Color="#66FF5500"/>
+                <GradientStop Offset="1" Color="#00FF5500"/>
+            </LinearGradientBrush>
+
+            <LinearGradientBrush x:Key="LogoBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Offset="0" Color="#FF7A2E"/>
+                <GradientStop Offset="1" Color="#FF3D00"/>
+            </LinearGradientBrush>
+
+            <LinearGradientBrush x:Key="ChromeButtonBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Offset="0" Color="#3A3A3A"/>
+                <GradientStop Offset="1" Color="#2A2A2A"/>
+            </LinearGradientBrush>
+
+            <LinearGradientBrush x:Key="ChromeButtonHoverBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Offset="0" Color="#4E4E4E"/>
+                <GradientStop Offset="1" Color="#3A3A3A"/>
+            </LinearGradientBrush>
+
+            <SolidColorBrush x:Key="ChromeButtonPressedBrush" Color="#232323"/>
+            <SolidColorBrush x:Key="ChromeButtonPressedForegroundBrush" Color="#FF5500"/>
+            <SolidColorBrush x:Key="ChromeButtonHoverForegroundBrush" Color="#FFFFFF"/>
+
+            <LinearGradientBrush x:Key="TitleBarShadowBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Offset="0" Color="#66000000"/>
+                <GradientStop Offset="1" Color="#00000000"/>
+            </LinearGradientBrush>
+
+            <!-- Chunky title bar icon button -->
+            <Style x:Key="ChromeIconButtonStyle" TargetType="Button">
+                <Setter Property="Width" Value="38"/>
+                <Setter Property="Height" Value="38"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Foreground" Value="{StaticResource ChromeButtonForegroundBrush}"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid x:Name="Root" Background="Transparent" RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <ScaleTransform x:Name="RootScale" ScaleX="1" ScaleY="1"/>
+                                </Grid.RenderTransform>
+
+                                <Border x:Name="Backplate"
+                                        Background="{StaticResource ChromeButtonBackgroundBrush}"
+                                        BorderBrush="{StaticResource ChromeButtonBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="9"/>
+
+                                <!-- top highlight: gives the key raised, chunky edge -->
+                                <Border x:Name="Gloss"
+                                        Margin="2,1,2,0"
+                                        Height="1"
+                                        VerticalAlignment="Top"
+                                        Background="#26FFFFFF"/>
+
+                                <ContentPresenter x:Name="Presenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal"/>
+
+                                        <VisualState x:Name="PointerOver">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Backplate" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{StaticResource ChromeButtonHoverBrush}"/>
+                                                </ObjectAnimationUsingKeyFrames>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Backplate" Storyboard.TargetProperty="BorderBrush">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{StaticResource AccentBrush}"/>
+                                                </ObjectAnimationUsingKeyFrames>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Presenter" Storyboard.TargetProperty="Foreground">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{StaticResource ChromeButtonHoverForegroundBrush}"/>
+                                                </ObjectAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualState>
+
+                                        <VisualState x:Name="Pressed">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Backplate" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{StaticResource ChromeButtonPressedBrush}"/>
+                                                </ObjectAnimationUsingKeyFrames>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Backplate" Storyboard.TargetProperty="BorderBrush">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{StaticResource AccentBrush}"/>
+                                                </ObjectAnimationUsingKeyFrames>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Gloss" Storyboard.TargetProperty="Visibility">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="Collapsed"/>
+                                                </ObjectAnimationUsingKeyFrames>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Presenter" Storyboard.TargetProperty="Foreground">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{StaticResource ChromeButtonPressedForegroundBrush}"/>
+                                                </ObjectAnimationUsingKeyFrames>
+                                                <DoubleAnimation Storyboard.TargetName="RootScale" Storyboard.TargetProperty="ScaleX"
+                                                                 To="0.9" Duration="0:0:0.08"/>
+                                                <DoubleAnimation Storyboard.TargetName="RootScale" Storyboard.TargetProperty="ScaleY"
+                                                                 To="0.9" Duration="0:0:0.08"/>
+                                            </Storyboard>
+                                        </VisualState>
+
+                                        <VisualState x:Name="Disabled">
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="Backplate" Storyboard.TargetProperty="Opacity"
+                                                                 To="0.35" Duration="0"/>
+                                                <DoubleAnimation Storyboard.TargetName="Gloss" Storyboard.TargetProperty="Opacity"
+                                                                 To="0" Duration="0"/>
+                                                <DoubleAnimation Storyboard.TargetName="Presenter" Storyboard.TargetProperty="Opacity"
+                                                                 To="0.3" Duration="0"/>
+                                            </Storyboard>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="ChromeGlyphStyle" TargetType="FontIcon">
+                <Setter Property="FontFamily" Value="Segoe Fluent Icons,Segoe MDL2 Assets"/>
+                <Setter Property="FontSize" Value="15"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

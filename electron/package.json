@@ -1,0 +1,66 @@
+{
+  "name": "faceit-extended",
+  "version": "2.0.0",
+  "description": "FACEIT Extended - a focused FACEIT desktop client with community extensions preloaded",
+  "main": "src/main.js",
+  "author": "Yabosen",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dist": "electron-builder --win nsis",
+    "pack": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "gg.faceit.extended",
+    "productName": "FACEIT Extended",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../extensions",
+        "to": "extensions",
+        "filter": [
+          "**/*",
+          "!**/.git/**",
+          "!**/*src*/**"
+        ]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Anti-Depressants-Dev-Team",
+        "repo": "Faceit-App-Extended"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "../faceit.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "shortcutName": "FACEIT Extended"
+    }
+  },
+  "allowScripts": {
+    "electron@38.8.6": true
+  },
+  "dependencies": {
+    "@ghostery/adblocker-electron": "^2.18.2",
+    "electron-updater": "^6.8.9"
+  }
+}

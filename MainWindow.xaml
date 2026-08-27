@@ -13,45 +13,104 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Custom Title Bar -->
-        <Grid x:Name="AppTitleBar" Height="48" Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <!-- ============ Custom Title Bar (drag surface) ============ -->
+        <Border x:Name="AppTitleBar"
+                Grid.Row="0"
+                Height="52"
+                Background="{StaticResource TitleBarBackgroundBrush}"
+                BorderBrush="{StaticResource TitleBarStrokeBrush}"
+                BorderThickness="0,0,0,1">
 
-            <!-- Navigation Controls -->
-            <!-- Navigation Controls -->
-            <Border Grid.Column="0" Margin="12,0,0,0" VerticalAlignment="Center" 
-                    Background="#2d2d2d" BorderBrush="#3d3d3d" BorderThickness="1" CornerRadius="4" Padding="4">
-                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                    <Button x:Name="BackButton" Click="BackButton_Click" 
-                            Width="32" Height="32" Background="Transparent" BorderThickness="0" CornerRadius="4"
-                            IsEnabled="False" ToolTipService.ToolTip="Back" Padding="0">
-                        <SymbolIcon Symbol="Back"/>
-                    </Button>
-                    <Button x:Name="ForwardButton" Click="ForwardButton_Click" 
-                            Width="32" Height="32" Background="Transparent" BorderThickness="0" CornerRadius="4"
-                            IsEnabled="False" ToolTipService.ToolTip="Forward" Padding="0">
-                        <SymbolIcon Symbol="Forward"/>
-                    </Button>
-                    <Rectangle Width="1" Height="16" Fill="#3d3d3d" VerticalAlignment="Center"/>
-                    <Button x:Name="RefreshButton" Click="RefreshButton_Click" 
-                            Width="32" Height="32" Background="Transparent" BorderThickness="0" CornerRadius="4"
-                            ToolTipService.ToolTip="Refresh" Padding="0">
-                        <SymbolIcon Symbol="Refresh"/>
-                    </Button>
+            <Grid x:Name="TitleBarContent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="144"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Brand mark -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10"
+                            Margin="14,0,0,0" VerticalAlignment="Center">
+                    <Border Width="30" Height="30" CornerRadius="8"
+                            Background="{StaticResource LogoBrush}">
+                        <TextBlock Text="F" FontSize="18" FontWeight="Black" Foreground="#FFFFFF"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Margin="0,-1,0,0">
+                            <TextBlock.RenderTransform>
+                                <SkewTransform AngleX="-10"/>
+                            </TextBlock.RenderTransform>
+                        </TextBlock>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="FACEIT" Foreground="#FFFFFF"
+                                   FontSize="15" FontWeight="ExtraBold" CharacterSpacing="90"
+                                   VerticalAlignment="Center"/>
+                        <Border Background="#1AFF5500" BorderBrush="#59FF5500" BorderThickness="1"
+                                CornerRadius="4" Padding="6,2,5,2" VerticalAlignment="Center">
+                            <TextBlock Text="EXTENDED" Foreground="#FF8A45"
+                                       FontSize="9" FontWeight="Bold" CharacterSpacing="160"/>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
-            </Border>
 
-            <!-- Title & Drag Area -->
-            <TextBlock Grid.Column="1" Text="FACEIT Extended" VerticalAlignment="Center" Margin="15,0,0,0" Foreground="#a0a0a0" FontSize="12" FontWeight="SemiBold"/>
-        </Grid>
+                <!-- Separator -->
+                <Rectangle Grid.Column="1" Width="1" Height="24" Margin="16,0,16,0"
+                           Fill="#3A3A3A" VerticalAlignment="Center"/>
+
+                <!-- Navigation cluster -->
+                <Border Grid.Column="2" VerticalAlignment="Center"
+                        Background="#212121" BorderBrush="#33000000" BorderThickness="1"
+                        CornerRadius="12" Padding="4">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button x:Name="BackButton" Click="BackButton_Click"
+                                Style="{StaticResource ChromeIconButtonStyle}"
+                                IsEnabled="False" ToolTipService.ToolTip="Back">
+                            <FontIcon Glyph="&#xE72B;" Style="{StaticResource ChromeGlyphStyle}"/>
+                        </Button>
+                        <Button x:Name="ForwardButton" Click="ForwardButton_Click"
+                                Style="{StaticResource ChromeIconButtonStyle}"
+                                IsEnabled="False" ToolTipService.ToolTip="Forward">
+                            <FontIcon Glyph="&#xE72A;" Style="{StaticResource ChromeGlyphStyle}"/>
+                        </Button>
+                        <Button x:Name="RefreshButton" Click="RefreshButton_Click"
+                                Style="{StaticResource ChromeIconButtonStyle}"
+                                ToolTipService.ToolTip="Refresh">
+                            <FontIcon Glyph="&#xE72C;" Style="{StaticResource ChromeGlyphStyle}"/>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Drag zone with grip texture -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="5"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            IsHitTestVisible="False" Opacity="0.28">
+                    <Ellipse Width="3" Height="3" Fill="#FFFFFF"/>
+                    <Ellipse Width="3" Height="3" Fill="#FFFFFF"/>
+                    <Ellipse Width="3" Height="3" Fill="#FFFFFF"/>
+                    <Ellipse Width="3" Height="3" Fill="#FFFFFF"/>
+                    <Ellipse Width="3" Height="3" Fill="#FFFFFF"/>
+                    <Ellipse Width="3" Height="3" Fill="#FFFFFF"/>
+                </StackPanel>
+
+                <!-- Accent hairline along the bottom of the bar -->
+                <Rectangle Grid.ColumnSpan="5" Height="2" VerticalAlignment="Bottom"
+                           Fill="{StaticResource TitleBarAccentLineBrush}"
+                           IsHitTestVisible="False"/>
+            </Grid>
+        </Border>
 
         <!-- WebView2 Control -->
         <controls:WebView2
             x:Name="WebView"
             Grid.Row="1"
             DefaultBackgroundColor="#1f1f1f"/>
+
+        <!-- Drop shadow cast by the title bar onto the content -->
+        <Rectangle Grid.Row="1" Height="6" VerticalAlignment="Top"
+                   Fill="{StaticResource TitleBarShadowBrush}"
+                   IsHitTestVisible="False"/>
     </Grid>
 </Window>
