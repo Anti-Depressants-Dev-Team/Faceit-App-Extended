@@ -151,9 +151,26 @@ Electron implements a subset of the Chrome extension APIs. What that costs here:
   - `chrome.cookies.get/getAll`, answered by `main.js` from the FACEIT session,
     and only for URLs inside the calling extension's host permissions.
     Faceit-Extender reads the FACEIT login cookie this way.
+  - `chrome.tabs.create`. There are no tabs, so `main.js` opens the extension's
+    own pages in an app window (one per URL - a second click focuses it),
+    faceit.com links in the main window, and anything else in the default
+    browser. An extension can only open its own pages, not another's. EXT's
+    wallpaper page opens this way.
 
   The page preload is registered for the whole session, so it checks for a
   `chrome-extension:` origin first and does nothing on faceit.com.
+- **IndexedDB, Cache Storage and OPFS fail on `chrome-extension://` pages**
+  ("Internal error opening backing store"), while `localStorage` and
+  `chrome.storage` work. Content scripts are unaffected (they use faceit.com's
+  storage). Where an extension needs it, `FILE_OVERRIDES` in `main.js` swaps a
+  file in the patched copy for one in `src/overrides/`. Each override is guarded
+  by a pattern the original must still match, so an extension update that
+  changes the file just skips the override (and logs it) instead of breaking.
+  - `faceit-ext/wp-db.js`: EXT's wallpaper store, moved onto
+    `chrome.storage.local` (base64, 4 MB chunks). Uploading your own wallpaper
+    and picking one from EXT's gallery both work.
+  - Not yet covered: FACEIT Forecast's player notes and Faceit-Extender's saved
+    match analyses use IndexedDB the same way.
 - **No `chrome.identity`.** FACEIT Vision's own sign-in needs it; Vision detects
   that and shows its "unsupported" state. Everything else in Vision works.
 - **uBlock Origin is not loaded.** It is Manifest V2 and depends on

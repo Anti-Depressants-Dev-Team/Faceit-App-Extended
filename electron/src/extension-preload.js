@@ -11,6 +11,7 @@
 //                         limits them to the extension's host permissions)
 // - chrome.permissions    reports what the manifest declares
 // - chrome.windows        one window, the app's
+// - chrome.tabs.create    opens the page in an app window (see main.js)
 //
 // Preloads run in an isolated world, so the patching itself has to be sent
 // into the extension's own world with executeInMainWorld.
@@ -29,6 +30,7 @@ if (isExtension) {
     contextBridge.exposeInMainWorld('__fxShell', {
       cookiesGet: (details) => ipcRenderer.invoke('fx:cookies-get', details),
       cookiesGetAll: (details) => ipcRenderer.invoke('fx:cookies-get-all', details),
+      openTab: (url) => ipcRenderer.invoke('fx:open-tab', url),
     });
   } catch {
     // Bridge unavailable - chrome.cookies below falls back to empty answers.
@@ -149,6 +151,30 @@ function installShims() {
       onFocusChanged: fakeEvent(),
       onBoundsChanged: fakeEvent(),
     });
+  }
+
+  // chrome.tabs.create: Electron has no tabs to create, so main.js opens the
+  // extension's own pages in an app window, faceit.com links in the main
+  // window, and anything else in the default browser. EXT's wallpaper upload
+  // page is opened this way.
+  if (bridge) {
+    if (!chrome.tabs) define('tabs', {});
+    if (chrome.tabs && typeof chrome.tabs.create !== 'function') {
+      const create = (props, callback) => {
+        let url = '';
+        try {
+          url = new URL((props && props.url) || '', location.href).href;
+        } catch {
+          // leave empty - main.js ignores it
+        }
+        return reply(callback, bridge.openTab(url).catch(() => undefined));
+      };
+      try {
+        Object.defineProperty(chrome.tabs, 'create', { value: create, configurable: true, writable: true });
+      } catch {
+        // frozen namespace - nothing to do
+      }
+    }
   }
 
   // chrome.identity is deliberately left missing: FACEIT Vision checks for it

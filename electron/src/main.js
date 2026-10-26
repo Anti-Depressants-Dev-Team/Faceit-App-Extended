@@ -67,6 +67,22 @@ const SKIPPED_EXTENSIONS = new Map([
   ['ublock-origin', 'MV2 APIs unavailable in Electron - replaced by the native blocker'],
 ]);
 
+// Whole files swapped out in the patched copy, for things a find/replace can't
+// fix. Each is only applied while the original still looks like the version
+// the replacement was written for (`expect`) - if an extension update changes
+// the file, the original is kept and a warning logged.
+const FILE_OVERRIDES = [
+  {
+    // IndexedDB can't open on chrome-extension:// pages in Electron, so EXT's
+    // wallpaper upload failed with "Internal error opening backing store".
+    // The replacement keeps the files in chrome.storage.local instead.
+    extension: 'faceit-ext',
+    file: 'wp-db.js',
+    replacement: path.join(__dirname, 'overrides', 'faceit-ext', 'wp-db.js'),
+    expect: /window\.ExtWpDb\s*=\s*\{\s*get\s*:[\s\S]*put\s*:[\s\S]*del\s*:[\s\S]*clear\s*:[\s\S]*migrate\b/,
+  },
+];
+
 // Shown under an extension in the settings window when part of it can't work
 // inside Electron.
 const EXTENSION_NOTES = new Map([
@@ -139,6 +155,7 @@ function prepareExtensions() {
     if (patched > 0) {
       console.log(`[extensions] patched ${patched} file(s) in ${entry.name} for Electron`);
     }
+    applyFileOverrides(entry.name, dir);
     fs.writeFileSync(path.join(dir, BLANK_PAGE), '<!doctype html><title></title>');
     dirs.push(dir);
   }
@@ -348,6 +365,132 @@ for (const [channel, single] of [
   });
 }
 
+// ---------------------------------------------------------------------------
+// chrome.tabs.create - extension pages open in their own app window
+// ---------------------------------------------------------------------------
+
+/** @type {Map<string, BrowserWindow>} url -> open window, so a second click focuses it */
+const extensionPageWindows = new Map();
+
+/**
+ * "chrome-extension://<id>" for an extension URL, '' otherwise. URL#origin
+ * can't be used: it is "null" for every non-web scheme, so it would make all
+ * extensions look alike.
+ */
+function extensionOrigin(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'chrome-extension:' && parsed.host ? `chrome-extension://${parsed.host}` : '';
+  } catch {
+    return '';
+  }
+}
+
+function isFaceitUrl(url) {
+  return /^https:\/\/([a-z0-9-]+\.)*faceit\.com(\/|$)/i.test(url);
+}
+
+/** Where a link clicked inside an extension page should go. */
+function openLinkFromExtension(url) {
+  if (isFaceitUrl(url) && siteView && mainWindow) {
+    siteView.webContents.loadURL(url);
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  } else if (/^https?:/i.test(url)) {
+    shell.openExternal(url);
+  }
+}
+
+/**
+ * A full window for one of an extension's own pages - what Chrome would show
+ * in a new tab. EXT's wallpaper upload page is the main user.
+ */
+function openExtensionPageWindow(url) {
+  const existing = extensionPageWindows.get(url);
+  if (existing && !existing.isDestroyed()) {
+    if (existing.isMinimized()) existing.restore();
+    existing.focus();
+    return;
+  }
+
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 820,
+    minWidth: 640,
+    minHeight: 480,
+    backgroundColor: '#111111',
+    autoHideMenuBar: true,
+    title: 'FACEIT Extended',
+    icon: path.join(__dirname, '..', '..', 'faceit.ico'),
+    webPreferences: {
+      session: faceitSession,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  win.setMenuBarVisibility(false);
+
+  const wc = win.webContents;
+  wc.setWindowOpenHandler(({ url: next }) => {
+    if (next.startsWith('chrome-extension://')) openExtensionPageWindow(next);
+    else openLinkFromExtension(next);
+    return { action: 'deny' };
+  });
+  wc.on('will-navigate', (event, next) => {
+    if (/^https?:/i.test(next)) {
+      event.preventDefault();
+      openLinkFromExtension(next);
+    }
+  });
+  wc.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    if (input.key === 'F12') {
+      wc.toggleDevTools();
+      event.preventDefault();
+    } else if (input.key === 'F5' || ((input.control || input.meta) && input.key.toLowerCase() === 'r')) {
+      wc.reload();
+      event.preventDefault();
+    }
+  });
+
+  win.on('closed', () => extensionPageWindows.delete(url));
+  extensionPageWindows.set(url, win);
+  win.loadURL(url);
+}
+
+/**
+ * Handle chrome.tabs.create from an extension. Its own pages get a window,
+ * faceit.com loads in the main window, anything else goes to the browser.
+ * Returns a minimal chrome.tabs.Tab.
+ */
+function createTabForExtension(senderOrigin, url) {
+  let target;
+  try {
+    target = new URL(url);
+  } catch {
+    return undefined;
+  }
+
+  if (target.protocol === 'chrome-extension:') {
+    // Only an extension's own pages - never another extension's.
+    if (!senderOrigin || extensionOrigin(target.href) !== senderOrigin) return undefined;
+    openExtensionPageWindow(target.href);
+  } else if (target.protocol === 'https:' || target.protocol === 'http:') {
+    openLinkFromExtension(target.href);
+  } else {
+    return undefined;
+  }
+
+  return { id: -1, index: 0, windowId: 1, active: true, highlighted: true, pinned: false, incognito: false, url: target.href, pendingUrl: target.href, status: 'loading' };
+}
+
+ipcMain.handle('fx:open-tab', (event, url) => {
+  const origin = extensionOrigin(event.senderFrame ? event.senderFrame.origin : '');
+  if (!origin) return undefined;
+  return createTabForExtension(origin, String(url || ''));
+});
+
 /** Hook the cookie IPC up to each extension service worker as it starts. */
 function wireServiceWorkerIpc(ses) {
   ses.serviceWorkers.on('running-status-changed', ({ versionId, runningStatus }) => {
@@ -362,6 +505,11 @@ function wireServiceWorkerIpc(ses) {
       worker.ipc.removeHandler(channel);
       worker.ipc.handle(channel, (_event, details) => extensionCookies(ses, worker.scope, details, single));
     }
+
+    worker.ipc.removeHandler('fx:open-tab');
+    worker.ipc.handle('fx:open-tab', (_event, url) =>
+      createTabForExtension(extensionOrigin(worker.scope), String(url || ''))
+    );
   });
 }
 
@@ -499,6 +647,25 @@ async function resetExtensionData(key) {
   scheduleSiteReload();
   broadcastExtensions();
   return listExtensions();
+}
+
+/** Swap in FILE_OVERRIDES for one extension's patched copy. */
+function applyFileOverrides(name, dir) {
+  for (const override of FILE_OVERRIDES) {
+    if (override.extension !== name) continue;
+    const target = path.join(dir, override.file);
+    try {
+      const original = fs.readFileSync(target, 'utf8');
+      if (!override.expect.test(original)) {
+        console.warn(`[extensions] ${name}/${override.file} changed upstream - override skipped`);
+        continue;
+      }
+      fs.copyFileSync(override.replacement, target);
+      console.log(`[extensions] replaced ${name}/${override.file} for Electron`);
+    } catch (error) {
+      console.warn(`[extensions] could not override ${name}/${override.file}: ${error.message}`);
+    }
+  }
 }
 
 /** Apply SOURCE_PATCHES to every .js file under dir. Returns files changed. */
@@ -702,6 +869,9 @@ function createWindow(ses) {
     siteView = null;
     // The settings window means nothing without the app behind it.
     if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.close();
+    for (const win of extensionPageWindows.values()) {
+      if (!win.isDestroyed()) win.close();
+    }
   });
 
   mainWindow.once('ready-to-show', () => {
@@ -863,14 +1033,16 @@ function openSettingsWindow() {
 
   const panel = settingsPanel.webContents;
   panel.setWindowOpenHandler(({ url }) => {
-    if (/^https?:/i.test(url)) shell.openExternal(url);
+    const own = extensionOrigin(url);
+    if (own && own === extensionOrigin(panel.getURL())) openExtensionPageWindow(url);
+    else openLinkFromExtension(url);
     return { action: 'deny' };
   });
-  // Links inside extension pages that navigate away go to the real browser.
+  // Links that navigate away: faceit.com to the main window, the rest to the browser.
   panel.on('will-navigate', (event, url) => {
     if (/^https?:/i.test(url)) {
       event.preventDefault();
-      shell.openExternal(url);
+      openLinkFromExtension(url);
     }
   });
   // Popups often render after load (React and friends), so measure twice.
