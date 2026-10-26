@@ -1,0 +1,1 @@
+import{m as e}from"./react-dom-yulZmupg.js";import"./createFaceitExtenderQueryClient-CbFICmfN.js";var t=async t=>(await e.local.get([t]))[t],n=async(t,n)=>{await e.local.set({[t]:n})},r=(t,n)=>{let r=(e,r)=>{r===`local`&&t in e&&n(e[t].newValue,e[t].oldValue)};return e.onChanged.addListener(r),()=>{e.onChanged.removeListener(r)}};export{n,r,t};

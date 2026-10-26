@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EXT · Wallpaper</title>
+<link rel="icon" href="icons/icon48.png">
+<link rel="stylesheet" href="wallpaper.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="head">
+    <div class="logo">EX<b>T</b></div>
+    <h1 data-i18n="wp.pageTitle">Faceit wallpaper</h1>
+    <p class="lead" data-i18n="wp.lead">A picture, GIF or short video under the Faceit interface. Panels turn see-through.</p>
+  </header>
+  <div class="notice" id="notice" hidden role="status">
+    <div class="notice-t" id="notice-t"></div>
+    <button class="notice-x" id="notice-x" type="button" aria-label="Close">×</button>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="feed" data-i18n="wp.tabAll">Wallpapers</button>
+    <button class="tab" role="tab" data-tab="mine" data-i18n="wp.tabMine">My wallpaper</button>
+    <button class="tab" role="tab" data-tab="admin" data-i18n="wp.tabAdmin" hidden>Moderation</button>
+  </nav>
+  <section class="pane" data-pane="feed" hidden>
+    <h2 class="sub-h first" data-i18n="wp.tabExt">From EXT</h2>
+    <div class="g-grid" id="g-grid"></div>
+    <p class="empty" id="g-empty" hidden data-i18n="wp.noNet">No connection to the EXT server. Try again later.</p>
+    <div id="feed-block">
+    <h2 class="sub-h" data-i18n="wp.tabFeed">From players</h2>
+    <p class="pane-lead" data-i18n="wp.feedLead">Wallpapers other players shared. Every one is checked by hand before it shows up here.</p>
+    <p class="feed-hint" id="feed-hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg><span id="feed-hint-t"></span></p>
+    <div class="pane-head feed-tools">
+      <input class="search" id="f-search" type="search" maxlength="40" autocomplete="off" data-i18n-ph="wp.searchPh" placeholder="Search by title or author">
+      <div class="seg-pair">
+        <div class="seg kind-seg" role="group">
+          <button class="seg-b ic" type="button" data-kind="image" aria-pressed="false" data-i18n-aria="wp.fImg"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/></svg></button>
+          <button class="seg-b ic" type="button" data-kind="video" aria-pressed="false" data-i18n-aria="wp.fVid"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor"/></svg></button>
+        </div>
+        <div class="seg" role="radiogroup">
+          <button class="seg-b on" data-sort="top" data-i18n="wp.sortTop">Popular</button>
+          <button class="seg-b" data-sort="new" data-i18n="wp.sortNew">New</button>
+        </div>
+      </div>
+    </div>
+    <div class="chips chips-row" id="f-cats"></div>
+    <div class="g-grid" id="f-grid"></div>
+    <button class="btn more" id="f-more" type="button" hidden data-i18n="wp.more">Show more</button>
+    <p class="empty" id="f-empty" hidden data-i18n="wp.feedEmpty">Nothing here yet. Be the first: share yours on the «My wallpaper» tab.</p>
+    </div>
+  </section>
+  <section class="pane" data-pane="mine" hidden>
+    <label class="screen" id="screen" for="file">
+      <div class="screen-media" id="media"></div>
+      <div class="screen-shade" id="shade"></div>
+      <div class="mock" aria-hidden="true">
+        <div class="mk-side"></div>
+        <div class="mk-canvas">
+          <div class="mk-nav"></div>
+          <div class="mk-stats"><i></i><i></i><i class="wide"></i></div>
+          <div class="mk-party"><i></i><i></i><i class="me"></i><i></i><i></i></div>
+          <div class="mk-play"><span class="mk-btn"></span></div>
+        </div>
+        <div class="mk-rail"></div>
+      </div>
+      <div class="drop" id="drop">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/></svg>
+        <span class="drop-t" data-i18n="wp.drop">Drop a file here</span>
+        <span class="btn" data-i18n="wp.pick">Choose file</span>
+      </div>
+      <div class="busy" id="busy"><span class="spin"></span><span id="busy-t"></span></div>
+      <input type="file" id="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif,video/mp4,video/webm,video/quicktime,.mov" hidden>
+    </label>
+    <p class="req" data-i18n="wp.req">JPG, PNG, WebP, GIF, MP4 or WebM. At least 1280×720.</p>
+    <div class="bar">
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+      <div class="actions">
+        <button class="btn ghost" id="btn-other" type="button" hidden data-i18n="wp.pickOther">Choose another</button>
+        <button class="btn primary" id="btn-save" type="button" disabled data-i18n="wp.save">Set as wallpaper</button>
+      </div>
+    </div>
+    <div class="pane-head lib-head">
+      <h2 class="sub-h" data-i18n="wp.libTitle">Downloaded and uploaded</h2>
+      <button class="btn sm danger" id="lib-clear" type="button" hidden data-i18n="wp.libClear">Delete all</button>
+    </div>
+    <div class="g-grid" id="lib-grid"></div>
+    <p class="empty" id="lib-empty" hidden data-i18n="wp.libEmpty">Wallpapers you download or upload will show up here.</p>
+    <div class="share" id="share" hidden>
+      <div class="share-thumb" id="share-thumb"></div>
+      <div class="share-body">
+        <h3 data-i18n="wp.shareT">Share to the feed</h3>
+        <p class="share-s ws-rules" data-i18n="wp.wsRules">Workshop: 1920×1080 to 4K, up to 350 MB, videos up to 30 seconds, up to 20 a day.</p>
+        <p class="share-s" data-i18n="wp.shareS">Your current wallpaper goes to moderation. Once approved, every EXT player can set it.</p>
+        <div class="share-row">
+          <input id="share-title" type="text" maxlength="40" autocomplete="off" data-i18n-ph="wp.sharePh" placeholder="Title">
+        </div>
+        <p class="share-s cats-l" data-i18n="wp.catsLabel">Categories, up to 3</p>
+        <div class="chips" id="share-cats"></div>
+        <div class="share-row">
+          <button class="btn primary" id="btn-share" type="button" data-i18n="wp.shareBtn">Send for review</button>
+        </div>
+        <p class="msg" id="share-msg" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+    <h2 class="sub-h" id="mine-h" hidden data-i18n="wp.mineSent">Sent to the feed</h2>
+    <div class="rows" id="mine-list"></div>
+  </section>
+  <section class="pane" data-pane="admin" hidden>
+    <div class="adm-key" id="adm-key" hidden></div>
+    <div class="pane-head">
+      <div class="seg" role="radiogroup" id="adm-seg">
+        <button class="seg-b on" data-st="pending" data-i18n="wp.stPending">Pending</button>
+        <button class="seg-b" data-st="approved" data-i18n="wp.stApproved">In the feed</button>
+      </div>
+      <p class="pane-lead" id="adm-used"></p>
+    </div>
+    <div class="adm-list" id="adm-list"></div>
+    <p class="empty" id="adm-empty" hidden data-i18n="wp.admEmpty">Nothing waiting for review.</p>
+  </section>
+  <dialog class="rep" id="rep">
+    <h3 data-i18n="wp.repT">Report wallpaper</h3>
+    <textarea id="rep-text" maxlength="300" rows="4" data-i18n-ph="wp.repPh" placeholder="What is wrong?"></textarea>
+    <p class="msg" id="rep-msg"></p>
+    <div class="actions"><button class="btn ghost" id="rep-cancel" type="button" data-i18n="common.cancel">Cancel</button><button class="btn primary" id="rep-send" type="button" data-i18n="wp.repSend">Send</button></div>
+  </dialog>
+</main>
+<script src="i18n-popup.js"></script>
+<script src="wp-db.js"></script>
+<script src="wallpaper.js"></script>
+</body>
+</html>

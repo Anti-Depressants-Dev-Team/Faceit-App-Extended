@@ -1,0 +1,8 @@
+{
+  "extension_name": {
+    "message": "EXT — Faceit Intelligence"
+  },
+  "extension_description": {
+    "message": "Analyse des matchs Faceit, par les joueurs pour les joueurs. Probabilité de victoire, EXT Rating, hidden pool."
+  }
+}

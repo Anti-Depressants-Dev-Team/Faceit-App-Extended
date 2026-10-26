@@ -1,0 +1,10 @@
+{
+  "extension_name": {
+    "message": "EXT — Faceit Intelligence",
+    "description": "Название расширения в Chrome Web Store и списке расширений"
+  },
+  "extension_description": {
+    "message": "Faceit matchroom analytics by players, for players. Win probability, EXT Rating, hidden pool detection — free.",
+    "description": "Краткое описание для Chrome Web Store (лимит 132 символа)"
+  }
+}

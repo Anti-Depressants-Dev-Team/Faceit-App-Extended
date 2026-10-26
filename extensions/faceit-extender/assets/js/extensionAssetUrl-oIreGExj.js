@@ -1,0 +1,1 @@
+function e(e){if(!e||/^[a-z][a-z0-9+.-]*:/i.test(e))return e;try{let t=globalThis,n=t.browser?.runtime??t.chrome?.runtime;return n?.getURL?n.getURL(e.replace(/^\//,``)):e}catch{return e}}export{e as t};

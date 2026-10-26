@@ -1,0 +1,1 @@
+function e(e,t){let n=-1/0,r=null,i=!1;return{schedule(){i||r!==null||(r=setTimeout(()=>{r=null,n=Date.now(),e()},Math.max(0,t-(Date.now()-n))))},cancel(){i=!0,r!==null&&clearTimeout(r),r=null}}}export{e as t};

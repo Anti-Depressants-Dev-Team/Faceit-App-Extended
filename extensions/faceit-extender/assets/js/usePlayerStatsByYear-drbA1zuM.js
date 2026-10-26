@@ -1,0 +1,1 @@
+import{_ as e}from"./createFaceitExtenderQueryClient-CbFICmfN.js";import{A as t}from"./faceit-custom-CDtcfe9W.js";import{t as n}from"./playerStatsByYearOptions-Bo47EsJi.js";var r=(r,i=`cs2`,a,o,s=!0)=>{let c=a||new Date().getFullYear().toString();return e({...n(r,i,c),enabled:!!r&&s&&t(c)})};export{r as t};

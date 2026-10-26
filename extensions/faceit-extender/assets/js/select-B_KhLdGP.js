@@ -1,0 +1,1 @@
+function e(e,t=document){return(t??document).querySelector(e)??void 0}function t(e,t=document){return Array.from((t??document).querySelectorAll(e))}e.all=t;export{e as t};

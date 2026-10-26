@@ -1,0 +1,1 @@
+import{t as e}from"./client-CYgUK-Dx.js";var t=e(),n=new WeakMap;function r(e,r){let i=n.get(r);i||(i=(0,t.createRoot)(r),n.set(r,i)),i.render(e)}function i(e){if(!e)return!1;let t=n.get(e);return t?(t.unmount(),n.delete(e),!0):!1}export{i as n,r as t};

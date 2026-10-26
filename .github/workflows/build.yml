@@ -54,3 +54,8 @@ jobs:
           set -e
           ls dist/win-unpacked/resources/extensions
           test -f "dist/win-unpacked/FACEIT Extended.exe"
+          # Extensions keep code in their own src/ folders - make sure the
+          # packaging filter that drops *-src checkouts doesn't eat those too.
+          test -f dist/win-unpacked/resources/extensions/faceit-forecast/src/visual/popup.html
+          test -f dist/win-unpacked/resources/extensions/faceit-extender/src/pages/popup/index.html
+          test ! -e dist/win-unpacked/resources/extensions/faceit-mappio-src

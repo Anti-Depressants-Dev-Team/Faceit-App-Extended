@@ -68,10 +68,12 @@ Two things to know:
 
 | File | Role |
 | --- | --- |
-| `src/main.js` | Window, session, extensions, ad blocking, updates, nav IPC |
+| `src/main.js` | Window, session, extensions, settings window, ad blocking, updates, IPC |
 | `src/preload.js` | `window.shellApi` bridge for the title bar |
-| `src/sw-preload.js` | `chrome.storage.sync` shim inside extension service workers |
-| `src/renderer/` | The title bar itself (HTML/CSS/JS) |
+| `src/settings-preload.js` | `window.settingsApi` bridge for the extensions window |
+| `src/extension-preload.js` | Fills in missing `chrome.*` APIs for extension workers and pages |
+| `src/renderer/index.html` etc. | The title bar (`shell.*`) |
+| `src/renderer/settings.*` | The extensions window |
 
 The window is a frameless `BrowserWindow` whose own web contents render *only*
 the 40px title bar; faceit.com lives in a `WebContentsView` positioned below it.
@@ -80,10 +82,49 @@ Layouts still work on the maximize button - the rest of the bar is a
 `-webkit-app-region: drag` surface.
 
 The bar itself is deliberately minimal: three flat nav keys, no wordmark, no
-branding. Page loading shows as a hairline sweeping along the bottom edge
-rather than a spinner, and an Update button appears only when there is one.
+branding, and an extensions button on the right. Page loading shows as a
+hairline sweeping along the bottom edge rather than a spinner, and an Update
+button appears only when there is one.
 
-## Extensions
+## Extensions window
+
+The puzzle-piece button in the title bar (or `Ctrl+,`) opens a separate
+window listing every bundled extension:
+
+- **On/off switch** per extension. Turning one off unloads it from the session
+  and reloads faceit.com so its content scripts are gone; turning it on loads it
+  again. The choice is saved to `%APPDATA%/faceit-extended/extension-settings.json`
+  (a list of the folders that are off - anything new defaults to on).
+- **The extension's own settings page** embedded on the right - its toolbar
+  popup ("Quick settings") and, where it has one, its options page ("All
+  options"). This is the UI Electron otherwise has no toolbar for. It is a
+  `WebContentsView` in the FACEIT session, laid over a box the renderer reports;
+  narrow popups are centred and popups wider than the box are zoomed out to fit.
+  `F12` opens DevTools for whichever page is showing.
+- **Reset data** clears the extension's `chrome.storage` and origin storage,
+  then restarts it. To get a script context inside the extension, every copied
+  extension gets an empty `fx-blank.html` written next to its manifest.
+- Warnings for anything known not to work inside Electron.
+
+## Bundled extensions
+
+| Folder | Extension | Store id |
+| --- | --- | --- |
+| `faceit-ext` | EXT - Faceit Intelligence | `ikkiomngodfmfdmeomohmjeobdgpholf` |
+| `faceit-extender` | Faceit-Extender | `agndfoikbihjcifcfnnbiffconjgofoe` |
+| `faceit-forecast` | FACEIT Forecast | `mpkkcddegpblmobincjkbpgfcbejjbcp` |
+| `faceit-mappio` | FACEIT Mappio | |
+| `faceit-predictor` | FACEIT CS2 Predictor | |
+| `faceit-repeek` | Repeek (formerly FACEIT Enhancer) | `mokknliiomknodkdmpcellamkopbdmao` |
+| `faceit-tapit` | Tapit | `jpkfehcmmaoiljfcemkihedeckdmcece` |
+| `faceit-vision` | FACEIT Vision | `kbjbhonnpkijdahiiddeihbolbdjbdnm` |
+
+To update one, download its CRX from the Chrome Web Store
+(`https://clients2.google.com/service/update2/crx?response=redirect&prodversion=138.0.0.0&acceptformat=crx2,crx3&x=id%3D<ID>%26uc`),
+unzip it (CRX files are zips with a header; `unzip` handles them) and replace
+the folder.
+
+## How extensions load
 
 Extensions are copied from `../extensions` into
 `%APPDATA%/faceit-extended/extensions` on every launch, patched for Electron,
@@ -92,26 +133,39 @@ patched, never the files in this repo.**
 
 Electron implements a subset of the Chrome extension APIs. What that costs here:
 
-- **`chrome.storage.sync` does not exist** and reading it throws. faceit-forecast
-  and faceit-repeek both use it, so `src/main.js` rewrites `.storage.sync` ->
-  `.storage.local` (and the `storageType: "sync"` default inside Repeek's
-  bundled `webext-options-sync`) in the copied files. Settings persist per
-  machine instead of per Google account, which is what you want for a desktop
-  app anyway. `sw-preload.js` covers the same gap inside service workers, where
-  file patching can't reach.
+- **`chrome.storage.sync` does not work.** Several extensions use it, so
+  `src/main.js` rewrites `.storage.sync` -> `.storage.local` (and the
+  `storageType: "sync"` default inside Repeek's bundled `webext-options-sync`)
+  in the copied files. Settings persist per machine instead of per Google
+  account, which is what you want for a desktop app anyway.
+- **Missing namespaces crash scripts at startup.** A background script that
+  so much as adds a listener to an API Electron lacks throws and never runs
+  (FACEIT Vision reads `chrome.windows`, EXT and Repeek read
+  `chrome.permissions`). `src/extension-preload.js` runs in every extension
+  service worker and extension page and, via `contextBridge.executeInMainWorld`,
+  adds:
+  - `chrome.storage.sync` aliased to `.local`
+  - `chrome.permissions` reporting what the manifest declares (host permissions
+    plus content script sites, as Chrome does)
+  - `chrome.windows` describing the one app window
+  - `chrome.cookies.get/getAll`, answered by `main.js` from the FACEIT session,
+    and only for URLs inside the calling extension's host permissions.
+    Faceit-Extender reads the FACEIT login cookie this way.
+
+  The page preload is registered for the whole session, so it checks for a
+  `chrome-extension:` origin first and does nothing on faceit.com.
+- **No `chrome.identity`.** FACEIT Vision's own sign-in needs it; Vision detects
+  that and shows its "unsupported" state. Everything else in Vision works.
 - **uBlock Origin is not loaded.** It is Manifest V2 and depends on
   `chrome.webNavigation`, `chrome.contextMenus`, `chrome.privacy` and the badge
   APIs, none of which Electron implements - its background page throws during
   startup, so loading it only produces console noise. Ad blocking is handled
   natively instead, see below.
-- **No extension toolbar or popups.** Electron renders no browser action UI, so
-  extension popups (Predictor settings, Repeek options) are unreachable. The
-  WinUI/WebView2 build had the same gap. Adding
-  [`electron-chrome-extensions`](https://github.com/samuelmaddock/electron-browser-shell)
-  would provide them.
+- **No extension toolbar.** Electron renders no browser action UI; the
+  extensions window shows each popup and options page instead (see above).
 
-Content scripts and MV3 service workers themselves run normally - forecast,
-mappio, predictor and repeek all load and initialise without errors.
+Content scripts and MV3 service workers run normally - all eight extensions
+load and initialise without errors.
 
 ## Ad blocking
 

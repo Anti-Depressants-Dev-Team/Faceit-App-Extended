@@ -26,4 +26,7 @@ contextBridge.exposeInMainWorld('shellApi', {
 
   /** Restart into the downloaded update. */
   installUpdate: () => ipcRenderer.send('update:install'),
+
+  /** Open the extension settings window. */
+  openSettings: () => ipcRenderer.send('settings:open'),
 });

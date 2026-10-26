@@ -10,6 +10,8 @@ reload.addEventListener('click', () => {
   window.shellApi.send(document.body.classList.contains('loading') ? 'stop' : 'reload');
 });
 
+document.getElementById('extensions').addEventListener('click', () => window.shellApi.openSettings());
+
 function render(state) {
   if (!state) return;
   back.disabled = !state.canGoBack;

@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "FACEIT Vision - 2D Replay, CS2 Stats Tracker, ELO & Auto-Accept",
+    "description": "Extension name used on Chromium browsers. Chrome Web Store allows up to 75 characters."
+  },
+  "extNameFirefox": {
+    "message": "FACEIT Vision - 2D Replay, CS2 Stats, Tracker, ELO",
+    "description": "Extension name used on Firefox. AMO allows up to 50 characters."
+  },
+  "extDescription": {
+    "message": "The free FACEIT extension for CS2: 2D replays, opponent stats tracker, ELO checker, extended levels, auto-accept and notes.",
+    "description": "Short store summary and browser-level description. Chrome Web Store allows up to 132 characters."
+  }
+}

@@ -1,0 +1,1 @@
+import{g as e,y as t}from"./react-dom-yulZmupg.js";import{a as n,l as r}from"./mapIcons-7zl6uhGN.js";var i=t(e(),1);function a(){return(0,i.useSyncExternalStore)(r,n,n)}export{a as t};

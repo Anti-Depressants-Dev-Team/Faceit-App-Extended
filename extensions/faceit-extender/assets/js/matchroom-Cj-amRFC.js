@@ -1,0 +1,1 @@
+import{y as e}from"../../src/pages/contentApp/index.js";var t=t=>/room\/([0-9a-z]+-[0-9a-z]+-[0-9a-z]+-[0-9a-z]+-[0-9a-z]+(?:-[0-9a-z]+)?)/.exec(t||e())?.[1];export{t};

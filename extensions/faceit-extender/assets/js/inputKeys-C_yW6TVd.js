@@ -1,0 +1,1 @@
+var e=function(e){return e.AUTO_MAP_PRETALK_TEXT=`autoMapPretalkText`,e.FACEIT_HAVE_WE_MET_SEARCH_DEPTH=`faceitHaveWeMetSearchDepth`,e.AUTO_REPORT_THRESHOLD=`autoReportThreshold`,e}({});export{e as t};

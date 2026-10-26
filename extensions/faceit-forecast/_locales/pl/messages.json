@@ -1,8 +1,1 @@
-{
-   "extension_description": {
-      "message": "Wygodne rozszerzenie do szczegółowych statystyk na Faceit."
-   },
-   "extension_name": {
-      "message": "FACEIT FORECAST"
-   }
-}
+{"extension_name":{"message":"FACEIT FORECAST"},"extension_description":{"message":"Wygodne rozszerzenie do szczegółowych statystyk na Faceit."}}

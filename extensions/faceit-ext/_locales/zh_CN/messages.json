@@ -1,0 +1,10 @@
+{
+  "extension_name": {
+    "message": "EXT — Faceit Intelligence",
+    "description": "Название расширения в Chrome Web Store и списке расширений"
+  },
+  "extension_description": {
+    "message": "玩家做给玩家的 Faceit 比赛房间分析：获胜概率、EXT Rating、hidden pool 检测，完全免费。",
+    "description": "Краткое описание для Chrome Web Store (лимит 132 символа)"
+  }
+}

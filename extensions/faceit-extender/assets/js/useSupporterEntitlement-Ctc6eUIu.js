@@ -1,0 +1,1 @@
+import{Y as e,_ as t}from"./createFaceitExtenderQueryClient-CbFICmfN.js";import{t as n}from"./supporterEntitlementCache-BTFw3mTg.js";function r(r){let i=r?.trim();return t({queryKey:[e.SUPPORTER_ENTITLEMENT,i?.toLowerCase()],queryFn:()=>n(i),enabled:!!i,staleTime:3e5,gcTime:18e5,refetchOnWindowFocus:!1,retry:!1})}export{r as t};

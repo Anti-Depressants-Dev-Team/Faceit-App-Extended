@@ -1,0 +1,10 @@
+{
+  "extension_name": {
+    "message": "EXT — Faceit Intelligence",
+    "description": "Название расширения в Chrome Web Store и списке расширений"
+  },
+  "extension_description": {
+    "message": "Oyunculardan oyunculara Faceit maç odası analizi. Kazanma olasılığı, EXT Rating, hidden pool tespiti — ücretsiz.",
+    "description": "Краткое описание для Chrome Web Store (лимит 132 символа)"
+  }
+}

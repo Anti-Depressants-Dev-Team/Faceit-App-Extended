@@ -1,0 +1,1 @@
+var e=`data-faceit-extender`,t=(t,n)=>{n.setAttribute(`${e}-${t}`,``)},n=(t,n)=>n.hasAttribute(`${e}-${t}`);export{t as n,n as t};

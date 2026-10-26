@@ -1,0 +1,1 @@
+import{d as e}from"./react-dom-yulZmupg.js";var t=Object.keys(e);function n(e){let n={};for(let[r,i]of e)n[t[r]]=i;return n}export{n as t};

@@ -38,7 +38,7 @@ const POPUP_HOSTS = [
 // user settings in sync, so it is rewritten to local in the copy under userData
 // - the files in this repo are never touched.
 //
-// The service worker shim in sw-preload.js covers background scripts; content
+// extension-preload.js covers background scripts and extension pages; content
 // scripts run in a world no preload can reach, so they need these rewrites.
 const SOURCE_PATCHES = [
   {
@@ -67,12 +67,29 @@ const SKIPPED_EXTENSIONS = new Map([
   ['ublock-origin', 'MV2 APIs unavailable in Electron - replaced by the native blocker'],
 ]);
 
+// Shown under an extension in the settings window when part of it can't work
+// inside Electron.
+const EXTENSION_NOTES = new Map([
+  ['faceit-vision', 'Signing in to FACEIT Vision from inside the extension is not supported here: it needs chrome.identity, which Electron does not provide. Everything that works without signing in is unaffected.'],
+]);
+
+// An empty page written into every copied extension. Loading it gives us a
+// script context inside the extension, which is how "Reset data" reaches
+// chrome.storage. Names starting with "_" are reserved by Chromium.
+const BLANK_PAGE = 'fx-blank.html';
+
 const isDev = !app.isPackaged;
 
 /** @type {BrowserWindow | null} */
 let mainWindow = null;
 /** @type {WebContentsView | null} */
 let siteView = null;
+/** @type {BrowserWindow | null} */
+let settingsWindow = null;
+/** @type {WebContentsView | null} */
+let settingsPanel = null;
+/** @type {Electron.Session | null} */
+let faceitSession = null;
 
 // ---------------------------------------------------------------------------
 // Extensions
@@ -122,10 +139,366 @@ function prepareExtensions() {
     if (patched > 0) {
       console.log(`[extensions] patched ${patched} file(s) in ${entry.name} for Electron`);
     }
+    fs.writeFileSync(path.join(dir, BLANK_PAGE), '<!doctype html><title></title>');
     dirs.push(dir);
   }
 
   return { target, dirs };
+}
+
+// ---------------------------------------------------------------------------
+// Extension registry - what the settings window lists and controls
+// ---------------------------------------------------------------------------
+
+/**
+ * @typedef {object} ExtensionEntry
+ * @property {string} key        folder name, stable across versions
+ * @property {string} dir        patched copy under userData
+ * @property {string} name       short display name
+ * @property {string} fullName   name as the manifest gives it
+ * @property {string} description
+ * @property {string} version
+ * @property {string | null} icon    data: URL
+ * @property {string | null} popup   path inside the extension
+ * @property {string | null} options path inside the extension
+ * @property {string | null} id      Chromium extension id once loaded
+ * @property {string | null} error   last load failure
+ */
+
+/** @type {Map<string, ExtensionEntry>} */
+const extensions = new Map();
+
+function extensionSettingsFile() {
+  return path.join(app.getPath('userData'), 'extension-settings.json');
+}
+
+/** Folder names the user switched off. Everything else loads. */
+function readDisabledExtensions() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(extensionSettingsFile(), 'utf8'));
+    if (Array.isArray(saved.disabled)) return new Set(saved.disabled);
+  } catch {
+    // first run, or unreadable - everything on
+  }
+  return new Set();
+}
+
+function saveDisabledExtensions(disabled) {
+  try {
+    fs.writeFileSync(
+      extensionSettingsFile(),
+      JSON.stringify({ disabled: [...disabled].sort() }, null, 2)
+    );
+  } catch (error) {
+    console.warn(`[extensions] could not save settings: ${error.message}`);
+  }
+}
+
+const disabledExtensions = readDisabledExtensions();
+
+/** Resolve a `__MSG_name__` manifest string against the default locale. */
+function localize(dir, manifest, value) {
+  const match = typeof value === 'string' && value.match(/^__MSG_(.+)__$/);
+  if (!match) return value || '';
+
+  const locales = [app.getLocale().replace('-', '_'), app.getLocale().split('-')[0], manifest.default_locale, 'en'];
+  for (const locale of locales) {
+    if (!locale) continue;
+    try {
+      const messages = JSON.parse(
+        fs.readFileSync(path.join(dir, '_locales', locale, 'messages.json'), 'utf8').replace(/^﻿/, '')
+      );
+      const key = Object.keys(messages).find((k) => k.toLowerCase() === match[1].toLowerCase());
+      if (key) return messages[key].message;
+    } catch {
+      // locale not shipped - try the next one
+    }
+  }
+  return match[1];
+}
+
+function readIcon(dir, manifest) {
+  const icons = manifest.icons || (manifest.action || manifest.browser_action || {}).default_icon || {};
+  const sizes = typeof icons === 'string' ? [[128, icons]] : Object.entries(icons).map(([s, p]) => [Number(s), p]);
+  sizes.sort((a, b) => b[0] - a[0]);
+
+  for (const [, rel] of sizes) {
+    try {
+      const data = fs.readFileSync(path.join(dir, rel));
+      const mime = rel.endsWith('.svg') ? 'image/svg+xml' : rel.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
+      return `data:${mime};base64,${data.toString('base64')}`;
+    } catch {
+      // missing file - try a smaller size
+    }
+  }
+  return null;
+}
+
+/** @returns {ExtensionEntry} */
+function describeExtension(dir) {
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8').replace(/^﻿/, '')
+  );
+  const fullName = localize(dir, manifest, manifest.name);
+  const action = manifest.action || manifest.browser_action || {};
+  const options =
+    manifest.options_page || (manifest.options_ui && manifest.options_ui.page) || null;
+
+  return {
+    key: path.basename(dir),
+    dir,
+    // "Tapit - Level up your Faceit experience" -> "Tapit",
+    // "Repeek (formerly FACEIT Enhancer)" -> "Repeek"
+    name: fullName.split(' - ')[0].replace(/\s*\([^)]*\)\s*$/, '').trim() || fullName,
+    fullName,
+    description: localize(dir, manifest, manifest.description),
+    version: manifest.version,
+    icon: readIcon(dir, manifest),
+    popup: action.default_popup || null,
+    options,
+    hosts: [...(manifest.host_permissions || []), ...(manifest.permissions || []).filter((p) => p.includes('://') || p === '<all_urls>')],
+    id: null,
+    error: null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// chrome.cookies for extension service workers
+// ---------------------------------------------------------------------------
+
+/** Does url fall under one of an extension's host permission patterns? */
+function matchesHostPermission(patterns, url) {
+  let target;
+  try {
+    target = new URL(url);
+  } catch {
+    return false;
+  }
+
+  return patterns.some((pattern) => {
+    if (pattern === '<all_urls>') return true;
+    const match = pattern.match(/^(\*|https?):\/\/([^/]+)\//);
+    if (!match) return false;
+    if (match[1] !== '*' && `${match[1]}:` !== target.protocol) return false;
+
+    const host = match[2];
+    if (host === '*') return true;
+    if (host.startsWith('*.')) {
+      const base = host.slice(2);
+      return target.hostname === base || target.hostname.endsWith(`.${base}`);
+    }
+    return target.hostname === host;
+  });
+}
+
+const SAME_SITE = { unspecified: 'unspecified', no_restriction: 'no_restriction', lax: 'lax', strict: 'strict' };
+
+/** Electron cookie -> chrome.cookies.Cookie */
+function toChromeCookie(cookie) {
+  return {
+    name: cookie.name,
+    value: cookie.value,
+    domain: cookie.domain,
+    hostOnly: Boolean(cookie.hostOnly),
+    path: cookie.path,
+    secure: Boolean(cookie.secure),
+    httpOnly: Boolean(cookie.httpOnly),
+    sameSite: SAME_SITE[cookie.sameSite] || 'unspecified',
+    session: Boolean(cookie.session),
+    expirationDate: cookie.expirationDate,
+    storeId: '0',
+  };
+}
+
+/**
+ * Answer a chrome.cookies call from a service worker, the way Chrome would:
+ * only for URLs the extension has host permission for.
+ */
+async function extensionCookies(ses, workerScope, details, single) {
+  const id = (() => {
+    try {
+      return new URL(workerScope).host;
+    } catch {
+      return '';
+    }
+  })();
+  const entry = [...extensions.values()].find((e) => e.id === id);
+  if (!entry || !details) return single ? null : [];
+
+  const url = details.url || (details.domain ? `https://${details.domain.replace(/^\./, '')}/` : null);
+  if (!url || !matchesHostPermission(entry.hosts, url)) return single ? null : [];
+
+  const filter = { url };
+  if (details.name) filter.name = details.name;
+  const found = (await ses.cookies.get(filter)).map(toChromeCookie);
+  return single ? found[0] || null : found;
+}
+
+// Extension pages (popups, options) ask over the normal IPC channel. The
+// sender's origin decides which extension's permissions apply - a faceit.com
+// frame has no extension origin and gets nothing.
+for (const [channel, single] of [
+  ['fx:cookies-get', true],
+  ['fx:cookies-get-all', false],
+]) {
+  ipcMain.handle(channel, (event, details) => {
+    const origin = event.senderFrame ? event.senderFrame.origin : '';
+    if (!faceitSession || !origin.startsWith('chrome-extension://')) return single ? null : [];
+    return extensionCookies(faceitSession, origin, details, single);
+  });
+}
+
+/** Hook the cookie IPC up to each extension service worker as it starts. */
+function wireServiceWorkerIpc(ses) {
+  ses.serviceWorkers.on('running-status-changed', ({ versionId, runningStatus }) => {
+    if (runningStatus !== 'starting' && runningStatus !== 'running') return;
+    const worker = ses.serviceWorkers.getWorkerFromVersionID(versionId);
+    if (!worker || !worker.scope.startsWith('chrome-extension://')) return;
+
+    for (const [channel, single] of [
+      ['fx:cookies-get', true],
+      ['fx:cookies-get-all', false],
+    ]) {
+      worker.ipc.removeHandler(channel);
+      worker.ipc.handle(channel, (_event, details) => extensionCookies(ses, worker.scope, details, single));
+    }
+  });
+}
+
+/** Plain view of the registry for the settings window. */
+function listExtensions() {
+  return [...extensions.values()]
+    .map((entry) => ({
+      key: entry.key,
+      name: entry.name,
+      fullName: entry.fullName,
+      description: entry.description,
+      version: entry.version,
+      icon: entry.icon,
+      hasPopup: Boolean(entry.popup),
+      hasOptions: Boolean(entry.options),
+      enabled: !disabledExtensions.has(entry.key),
+      loaded: Boolean(entry.id),
+      error: entry.error,
+      note: EXTENSION_NOTES.get(entry.key) || null,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function loadExtension(ses, entry) {
+  try {
+    const loaded = await ses.extensions.loadExtension(entry.dir, { allowFileAccess: true });
+    entry.id = loaded.id;
+    entry.error = null;
+    console.log(`[extensions] loaded ${entry.key} (${loaded.version})`);
+  } catch (error) {
+    entry.id = null;
+    entry.error = String(error.message || error);
+    console.error(`[extensions] failed ${entry.key}: ${entry.error}`);
+  }
+}
+
+function unloadExtension(ses, entry) {
+  if (!entry.id) return;
+  try {
+    ses.extensions.removeExtension(entry.id);
+    console.log(`[extensions] unloaded ${entry.key}`);
+  } catch (error) {
+    console.warn(`[extensions] could not unload ${entry.key}: ${error.message}`);
+  }
+  entry.id = null;
+}
+
+async function loadExtensions(ses) {
+  const { dirs } = prepareExtensions();
+
+  extensions.clear();
+  for (const dir of dirs) {
+    try {
+      const entry = describeExtension(dir);
+      extensions.set(entry.key, entry);
+    } catch (error) {
+      console.error(`[extensions] unreadable manifest in ${path.basename(dir)}: ${error.message}`);
+    }
+  }
+
+  await Promise.all(
+    [...extensions.values()].map((entry) => {
+      if (disabledExtensions.has(entry.key)) {
+        console.log(`[extensions] ${entry.key} is turned off`);
+        return null;
+      }
+      return loadExtension(ses, entry);
+    })
+  );
+}
+
+/** Content scripts only attach on navigation, so changes need a reload. */
+let siteReloadTimer = null;
+function scheduleSiteReload() {
+  clearTimeout(siteReloadTimer);
+  siteReloadTimer = setTimeout(() => {
+    if (siteView) siteView.webContents.reload();
+  }, 700);
+}
+
+function broadcastExtensions() {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.webContents.send('ext:changed', listExtensions());
+  }
+}
+
+async function setExtensionEnabled(key, enabled) {
+  const entry = extensions.get(key);
+  if (!entry || !faceitSession) return listExtensions();
+
+  if (enabled) {
+    disabledExtensions.delete(key);
+    if (!entry.id) await loadExtension(faceitSession, entry);
+  } else {
+    disabledExtensions.add(key);
+    unloadExtension(faceitSession, entry);
+  }
+
+  saveDisabledExtensions(disabledExtensions);
+  scheduleSiteReload();
+  broadcastExtensions();
+  return listExtensions();
+}
+
+/**
+ * Wipe an extension's saved settings: chrome.storage plus anything it keeps in
+ * its origin's localStorage / IndexedDB. Then restart it so its service worker
+ * drops whatever it had cached in memory.
+ */
+async function resetExtensionData(key) {
+  const entry = extensions.get(key);
+  if (!entry || !entry.id || !faceitSession) throw new Error('Turn the extension on first.');
+
+  const ses = faceitSession;
+  const origin = `chrome-extension://${entry.id}`;
+  const scratch = new BrowserWindow({
+    show: false,
+    webPreferences: { session: ses, contextIsolation: true, sandbox: true },
+  });
+
+  try {
+    await scratch.loadURL(`${origin}/${BLANK_PAGE}`);
+    await scratch.webContents.executeJavaScript(`(async () => {
+      await chrome.storage.local.clear();
+      try { await chrome.storage.session.clear(); } catch {}
+    })()`);
+  } finally {
+    scratch.destroy();
+  }
+
+  await ses.clearStorageData({ origin });
+
+  unloadExtension(ses, entry);
+  await loadExtension(ses, entry);
+  scheduleSiteReload();
+  broadcastExtensions();
+  return listExtensions();
 }
 
 /** Apply SOURCE_PATCHES to every .js file under dir. Returns files changed. */
@@ -154,23 +527,6 @@ function applySourcePatches(dir) {
   }
 
   return changed;
-}
-
-async function loadExtensions(ses) {
-  const { dirs } = prepareExtensions();
-
-  const results = await Promise.allSettled(
-    dirs.map((dir) => ses.extensions.loadExtension(dir, { allowFileAccess: true }))
-  );
-
-  results.forEach((result, index) => {
-    const name = path.basename(dirs[index]);
-    if (result.status === 'fulfilled') {
-      console.log(`[extensions] loaded ${name} (${result.value.version})`);
-    } else {
-      console.error(`[extensions] failed ${name}: ${result.reason}`);
-    }
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -344,6 +700,8 @@ function createWindow(ses) {
   mainWindow.on('closed', () => {
     mainWindow = null;
     siteView = null;
+    // The settings window means nothing without the app behind it.
+    if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.close();
   });
 
   mainWindow.once('ready-to-show', () => {
@@ -439,12 +797,230 @@ function wireShortcuts() {
     } else if (input.key === 'F12' || (ctrl && input.shift && input.key.toLowerCase() === 'i')) {
       wc.toggleDevTools();
       event.preventDefault();
+    } else if (ctrl && input.key === ',') {
+      openSettingsWindow();
+      event.preventDefault();
     }
   };
 
   mainWindow.webContents.on('before-input-event', handle);
   siteView.webContents.on('before-input-event', handle);
 }
+
+// ---------------------------------------------------------------------------
+// Extension settings window
+// ---------------------------------------------------------------------------
+
+/**
+ * A separate window listing every bundled extension, with a switch for each
+ * and the extension's own popup / options page embedded on the right - the
+ * part Electron has no toolbar for. The embedded page is a WebContentsView in
+ * the FACEIT session (so it shares the extension's storage); the renderer
+ * tells us where to put it.
+ */
+function openSettingsWindow() {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    if (settingsWindow.isMinimized()) settingsWindow.restore();
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 1080,
+    height: 720,
+    minWidth: 820,
+    minHeight: 520,
+    show: false,
+    backgroundColor: '#161616',
+    title: 'Extensions - FACEIT Extended',
+    icon: path.join(__dirname, '..', '..', 'faceit.ico'),
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: TITLE_BAR_COLOR,
+      symbolColor: '#b4b4b4',
+      height: TITLE_BAR_HEIGHT,
+    },
+    webPreferences: {
+      preload: path.join(__dirname, 'settings-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+
+  settingsPanel = new WebContentsView({
+    webPreferences: {
+      session: faceitSession,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  settingsPanel.setBackgroundColor('#1b1b1b');
+  if (typeof settingsPanel.setBorderRadius === 'function') settingsPanel.setBorderRadius(9);
+  settingsPanel.setVisible(false);
+  settingsWindow.contentView.addChildView(settingsPanel);
+
+  const panel = settingsPanel.webContents;
+  panel.setWindowOpenHandler(({ url }) => {
+    if (/^https?:/i.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  // Links inside extension pages that navigate away go to the real browser.
+  panel.on('will-navigate', (event, url) => {
+    if (/^https?:/i.test(url)) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+  // Popups often render after load (React and friends), so measure twice.
+  panel.on('did-finish-load', () => {
+    fitPanelToPopup();
+    setTimeout(fitPanelToPopup, 500);
+  });
+  panel.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+    if (isMainFrame && code !== -3 && settingsWindow) {
+      settingsWindow.webContents.send('ext:page-error', `${description} (${url})`);
+    }
+  });
+
+  const handleKeys = (event, input) => {
+    if (input.type !== 'keyDown') return;
+    if (input.key === 'F12') {
+      // DevTools for whichever extension page is open - handy when one misbehaves.
+      if (settingsPanel && settingsPanel.getVisible()) panel.toggleDevTools();
+      else settingsWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  };
+  settingsWindow.webContents.on('before-input-event', handleKeys);
+  panel.on('before-input-event', handleKeys);
+
+  settingsWindow.on('closed', () => {
+    if (settingsPanel) settingsPanel.webContents.close();
+    settingsWindow = null;
+    settingsPanel = null;
+    panelStage = null;
+    panelPageWidth = null;
+    panelIsPopup = false;
+  });
+
+  settingsWindow.once('ready-to-show', () => settingsWindow.show());
+  settingsWindow.loadFile(path.join(__dirname, 'renderer', 'settings.html'));
+}
+
+// Where the renderer's stage box is, and - for popups, which are built for a
+// ~350px toolbar bubble - how wide the page actually wants to be. A narrow
+// popup is centred in the stage instead of hugging its left edge.
+let panelStage = null;
+let panelIsPopup = false;
+// The popup's own width in CSS px; null for pages that fill whatever they get.
+let panelPageWidth = null;
+
+function layoutPanel() {
+  if (!settingsPanel || !panelStage) return;
+  const stage = panelStage;
+  let x = stage.x;
+  let width = stage.width;
+  let zoom = 1;
+
+  if (panelIsPopup && panelPageWidth) {
+    if (panelPageWidth > stage.width) {
+      // Wider than the stage: zoom out until it fits, but not into illegibility.
+      zoom = Math.max(0.6, Math.floor((stage.width / panelPageWidth) * 100) / 100);
+    } else {
+      x = stage.x + (stage.width - panelPageWidth) / 2;
+      width = panelPageWidth;
+    }
+  }
+
+  if (settingsPanel.webContents.getZoomFactor() !== zoom) settingsPanel.webContents.setZoomFactor(zoom);
+  settingsPanel.setBounds({
+    x: Math.round(x),
+    y: Math.round(stage.y),
+    width: Math.max(0, Math.round(width)),
+    height: Math.max(0, Math.round(stage.height)),
+  });
+}
+
+/**
+ * Measure how wide a popup lays itself out, then fit the panel to it. Only
+ * measured while the page still fills the whole stage at 100% - once it has
+ * been fitted, a popup with a min-width would just stretch to the new size.
+ */
+async function fitPanelToPopup() {
+  if (!settingsPanel || !panelIsPopup || !panelStage || panelPageWidth) return;
+  const wc = settingsPanel.webContents;
+  try {
+    const { width, viewport } = await wc.executeJavaScript(`(() => {
+      const body = document.body;
+      if (!body) return { width: 0, viewport: innerWidth };
+      const margin = parseFloat(getComputedStyle(body).marginRight) || 0;
+      return {
+        width: Math.ceil(Math.max(body.getBoundingClientRect().right + margin, document.documentElement.scrollWidth)),
+        viewport: innerWidth,
+      };
+    })()`);
+    if (!panelIsPopup || !settingsPanel || !width) return;
+
+    // A page as wide as its viewport just fills whatever it gets.
+    if (width < viewport - 40 || width > viewport + 1) {
+      panelPageWidth = width;
+      layoutPanel();
+    }
+  } catch {
+    // page navigated away mid-measure
+  }
+}
+
+function showExtensionPage(key, which) {
+  const entry = extensions.get(key);
+  if (!settingsPanel || !entry) return { ok: false, reason: 'missing' };
+  if (!entry.id) return { ok: false, reason: 'disabled' };
+
+  const page = which === 'options' ? entry.options : entry.popup || entry.options;
+  if (!page) return { ok: false, reason: 'no-page' };
+
+  panelIsPopup = page === entry.popup;
+  panelPageWidth = null;
+  layoutPanel();
+  settingsPanel.webContents.loadURL(`chrome-extension://${entry.id}/${page.replace(/^\//, '')}`);
+  settingsPanel.setVisible(true);
+  return { ok: true };
+}
+
+function hideExtensionPage() {
+  if (!settingsPanel) return;
+  panelIsPopup = false;
+  panelPageWidth = null;
+  settingsPanel.setVisible(false);
+  settingsPanel.webContents.loadURL('about:blank');
+}
+
+ipcMain.on('settings:open', () => openSettingsWindow());
+
+ipcMain.handle('ext:list', () => listExtensions());
+ipcMain.handle('ext:set-enabled', (_event, key, enabled) => setExtensionEnabled(key, Boolean(enabled)));
+ipcMain.handle('ext:reset', async (_event, key) => {
+  try {
+    return { ok: true, list: await resetExtensionData(key) };
+  } catch (error) {
+    return { ok: false, error: String(error.message || error) };
+  }
+});
+ipcMain.handle('ext:show-page', (_event, key, which) => showExtensionPage(key, which));
+ipcMain.on('ext:hide-page', () => hideExtensionPage());
+ipcMain.on('ext:reload-page', () => {
+  if (settingsPanel && settingsPanel.getVisible()) settingsPanel.webContents.reload();
+});
+ipcMain.on('ext:panel-bounds', (_event, rect) => {
+  if (!rect) return;
+  panelStage = rect;
+  layoutPanel();
+});
+ipcMain.on('ext:reload-site', () => {
+  if (siteView) siteView.webContents.reload();
+});
 
 // ---------------------------------------------------------------------------
 // IPC from the title bar
@@ -496,13 +1072,14 @@ if (!app.requestSingleInstanceLock()) {
     // Extensions only load into a persistent session.
     const ses = session.fromPartition('persist:faceit');
     ses.setUserAgent(CHROME_USER_AGENT);
+    faceitSession = ses;
 
-    // Aliases chrome.storage.sync onto .local inside extension service workers.
-    ses.registerPreloadScript({
-      id: 'storage-sync-shim',
-      type: 'service-worker',
-      filePath: path.join(__dirname, 'sw-preload.js'),
-    });
+    // Fills in the chrome.* APIs Electron lacks, in extension service workers
+    // and extension pages (popups, options). It does nothing on faceit.com.
+    const shim = path.join(__dirname, 'extension-preload.js');
+    ses.registerPreloadScript({ id: 'extension-shim-sw', type: 'service-worker', filePath: shim });
+    ses.registerPreloadScript({ id: 'extension-shim-frame', type: 'frame', filePath: shim });
+    wireServiceWorkerIpc(ses);
 
     await Promise.all([loadExtensions(ses), enableAdBlocking(ses)]);
     createWindow(ses);

@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "FACEIT Vision - 2D Replay, CS2 Stats Tracker, ELO & Auto-Accept"
+  },
+  "extNameFirefox": {
+    "message": "FACEIT Vision - 2D Replay, CS2 Stats, Tracker, ELO"
+  },
+  "extDescription": {
+    "message": "Die kostenlose FACEIT-Erweiterung für CS2: 2D-Replays, Gegner-Stats-Tracker, ELO-Checker, erweiterte Level und Auto-Accept."
+  }
+}

@@ -1,0 +1,1 @@
+var e=`https://api.methods.me`,t=`https://faceit-extender.com`;export{t as n,e as t};
